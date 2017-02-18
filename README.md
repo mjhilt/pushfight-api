@@ -36,7 +36,7 @@ GET /1/game/status?game=`<uuid>`
 
 POST /1/move
   * Make a move - Returns validation if you won or not
-  * Body: {game: `<uuid>`, moves: [state: `<boardState>`,...]}
+  * Body: {game: `<uuid>`, moves: [`<boardState>`,...]}
   * Returns: {win: `<bool>`}
   * Errors: 400 if move is not valid, 401 if user is not authenticated, 403 if it is not your turn
 
@@ -53,3 +53,26 @@ Row/Column | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 **2**|:checkered_flag:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:checkered_flag:|
 **3**|:no_entry_sign:|:checkered_flag:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:black_large_square:|:checkered_flag:|:checkered_flag:|:no_entry_sign:|
 
+The actual representation of the board state will be with a nested JSON object. There will be 11 keys in the object, each naming one of the 11 pieces. Ten of the piece names will be composed of the color, type, and a number, as given below; the final piece will be called "anchor".
+
+ Color | Type   | Board State Names
+-------|--------|------------------
+ White | Pusher | wp1, wp2, wp3
+ Black | Mover  | bm1, bm2
+
+An example of a valid starting board state object is then given by:
+```
+{
+  wp1: [0,4],
+  wp2: [1,4],
+  wp3: [3,4],
+  wm1: [2,4],
+  wm2: [2,3],
+  bp1: [0,5],
+  bp2: [2,5],
+  bp3: [3,5],
+  bm1: [2,5],
+  bm2: [1,6],
+  anchor: [0,0]
+}
+```
