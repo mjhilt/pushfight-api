@@ -143,4 +143,41 @@ def post_move():
     raise NotImplementedError
 
 
+def perform_turn(board, turn)
+    # Returns False if its an invalid turn
+    newboard = board.copy()
+    for move in turn[:-1]
+        if is_valid_move(newboard,move):
+            perform_move(newboard,move)
+        else:
+            return False
+
+    push = turn[-1]
+    if is_valid_push(newboard,push):
+         perform_push(newboard,push)
+     else:
+        return False
+
+    return newboard
+
+
+def is_valid_push(board, push):
+    is_valid = move[1] in board.values() 
+    return is_valid
+
+def is_valid_move(board, move):
+    #Needs more refinement
+    is_valid = move[1] not in board.values() 
+    return is_valid
+
+def perform_move(board, move):
+    board[move[0]]=move[1]
+
+
+def perform_push(board, move):
+
+
+
+
+
 b.run(host='localhost', port=8080)

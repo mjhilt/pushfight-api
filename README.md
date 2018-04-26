@@ -76,3 +76,12 @@ An example of a valid starting board state object is then given by:
   anchor: [0,0]
 }
 ```
+
+A Turn is defined as list of 1-3 "moves" with the last move implicitly understood as a push.  Each move is an tuple with a string specifying the piece and a 1x2 array specificing the ending location.
+
+[
+  ('wm1',[3,3]),
+  ('wp1',[3,2]),
+  ('wp1',[3,3]), # This is implicitly the push.
+]
+
