@@ -156,6 +156,15 @@ impl Universe {
         }
         let old_ix = self.get_index(row as u32, column as u32);
         let new_ix = self.get_index((row + delta_row) as u32, (column + delta_col) as u32);
+        let mut new_pieces : Vec<_> = new_pieces.into_iter().map(|e| {
+                match e {
+                    Piece::AnchoredBlackPusher => Piece::BlackPusher,
+                    Piece::AnchoredWhitePusher => Piece::WhitePusher,
+                    _ => e
+                }
+            }
+        ).collect();
+
         new_pieces[new_ix] = {
             match self.pieces[old_ix] {
                 Piece::WhitePusher => Piece::AnchoredWhitePusher,
