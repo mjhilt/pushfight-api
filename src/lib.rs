@@ -1,7 +1,6 @@
 #![feature(proc_macro, wasm_custom_section, wasm_import_module)]
 
 extern crate wasm_bindgen;
-use std::fmt;
 use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
 
@@ -19,12 +18,14 @@ pub fn greet(name: &str) {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Piece {
-    WhitePusher=0,//{is_anchored: bool},
+    WhitePusher=0,
     WhiteMover=1,
-    BlackPusher=2,//{is_anchored: bool},
+    BlackPusher=2,
     BlackMover=3,
     Empty=4,
-    Abyss=5
+    Abyss=5,
+    AnchoredWhitePusher=6,
+    AnchoredBlackPusher=7
 }
 
 #[wasm_bindgen]
@@ -90,46 +91,85 @@ impl Universe {
         }
         return false;
     }
+    fn can_push(&self, row: i32, column: i32, delta_row: i32, delta_col: i32) -> bool {
+        if !self.in_bounds(row, column) {
+            log!("{} {} not in bounds for push", row, column);
+            return false;
+        }
+        if (delta_row.abs() + delta_col.abs()) != 1 {
+            log!("Invalid push dir {} {}", delta_col, delta_row);
+            return false;
+        }
+        let ix = self.get_index(row as u32, column as u32);
+        if (self.pieces[ix] != Piece::BlackPusher) && (self.pieces[ix] != Piece::WhitePusher) {
+            log!("Mush push with pusher not {:?}", self.pieces[ix]);
+            return false;
+        }
+        let mut r = row + delta_row;
+        let mut c = column + delta_col;
+        while self.in_bounds(r, c) {
+            match self.pieces[self.get_index(r as u32, c as u32)] {
+                Piece::AnchoredBlackPusher |  Piece::AnchoredWhitePusher => {
+                    log!("Can't push through anchor");
+                    return false
+                },
+                Piece::Empty |  Piece::Abyss => return (r - row).abs() + (c - column).abs() > 1,
+                _ => {}
+            }
+            r += delta_row;
+            c += delta_col;
+        }
+        log!("Push ended out of bounds. This is not allowed");
+        false
+    }
+    fn execute_push(&mut self, row: i32, column: i32, delta_row: i32, delta_col: i32) {
+        let mut last_piece = Piece::Empty;
+        let mut r = row;
+        let mut c = column;
+        let mut new_pieces = self.pieces.clone();
+        while self.in_bounds(r, c) {
+            let ix = self.get_index(r as u32, c as u32);
+            match self.pieces[ix] {
+                Piece::Empty => {
+                    // last_piece = p;
+                    new_pieces[ix] = last_piece;
+                    log!("a");
+                    break;
+                },
+                Piece::Abyss => {
+                    log!("b");
+                    break;
+                    // last_piece = p;
+                    // new_pieces[ix] = last_piece;
+                    // self.game_over = true;
+                },
+                _ => {
+                    log!("c");
+                    new_pieces[ix] = last_piece;
+                    last_piece = self.pieces[self.get_index(r as u32, c as u32)];
+                }
+            }
+
+            r += delta_row;
+            c += delta_col;
+            log!("d {} {} ", r, c);
+        }
+        let old_ix = self.get_index(row as u32, column as u32);
+        let new_ix = self.get_index((row + delta_row) as u32, (column + delta_col) as u32);
+        new_pieces[new_ix] = {
+            match self.pieces[old_ix] {
+                Piece::WhitePusher => Piece::AnchoredWhitePusher,
+                Piece::BlackPusher => Piece::AnchoredBlackPusher,
+                _ => Piece::Abyss // This should not happen
+            }
+        };
+        self.pieces = new_pieces;
+    }
 }
 
 /// Public methods, exported to JavaScript.
 #[wasm_bindgen]
 impl Universe {
-/*
-    pub fn tick(&mut self) {
-        let mut next = self.cells.clone();
-
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let idx = self.get_index(row, col);
-                let cell = self.cells[idx];
-                let live_neighbors = self.live_neighbor_count(row, col);
-
-                let next_cell = match (cell, live_neighbors) {
-                    // Rule 1: Any live cell with fewer than two live neighbours
-                    // dies, as if caused by underpopulation.
-                    (Cell::Alive, x) if x < 2 => Cell::Dead,
-                    // Rule 2: Any live cell with two or three live neighbours
-                    // lives on to the next generation.
-                    (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
-                    // Rule 3: Any live cell with more than three live
-                    // neighbours dies, as if by overpopulation.
-                    (Cell::Alive, x) if x > 3 => Cell::Dead,
-                    // Rule 4: Any dead cell with exactly three live neighbours
-                    // becomes a live cell, as if by reproduction.
-                    (Cell::Dead, 3) => Cell::Alive,
-                    // All other cells remain in the same state.
-                    (otherwise, _) => otherwise,
-                };
-
-                next[idx] = next_cell;
-            }
-        }
-
-        self.cells = next;
-    }
-
-*/
     pub fn new() -> Universe {
         let width = 10;
         let height = 4;
@@ -148,10 +188,6 @@ impl Universe {
         }
     }
 
-    pub fn render(&self) -> String {
-        self.to_string()
-    }
-
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -165,9 +201,6 @@ impl Universe {
     }
 
     pub fn try_move(&mut self, start_row: u32, start_column: u32, end_row: u32, end_column: u32) {
-        // if self.can_move(start_row, start_column, end_row, end_column) {
-        //     self.pieces[self.get_index(end_row, end_column)] = self.pieces[self.get_index(start_row, start_column)];
-        // }
         let indices = {
             if self.can_move(start_row, start_column, end_row, end_column) {
                 let from_ix = self.get_index(start_row, start_column);
@@ -180,29 +213,26 @@ impl Universe {
             }
         };
 
-        // return;
-
-        // let mut other_pieces = self.pieces.clone();
         if let Some((to_ix, from_ix)) = indices {
             self.pieces[to_ix] = self.pieces[from_ix];
             log!("moving {} -> {}", from_ix, to_ix);
             self.pieces[from_ix] = Piece::Empty;
+            return;
         }
-        // Universe{width: self.width, height: self.height, pieces: other_pieces}
-    }
-}
-
-impl fmt::Display for Universe {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for line in self.pieces.as_slice().chunks(self.width as usize) {
-            for &piece in line {
-                let symbol = if piece == Piece::Abyss { "◻️" } else { "◼️" };
-                write!(f, "{}", symbol)?;
+        let pushdir = {
+            let delta_row = (end_row as i32)-(start_row as i32);
+            let delta_col = (end_column as i32)-(start_column as i32);
+            if self.can_push(start_row as i32, start_column as i32, delta_row, delta_col) {
+                Some((delta_row, delta_col))
             }
-            write!(f, "\n")?;
-        }
+            else {
+                None
+            }
+        };
+        if let Some((delta_row, delta_col)) = pushdir {
+            log!("Push is valid from {} {} in {} {} direction", start_column, start_row, delta_col, delta_row);
 
-        Ok(())
+            self.execute_push(start_row as i32, start_column as i32, delta_row, delta_col);
+        }
     }
 }
-
