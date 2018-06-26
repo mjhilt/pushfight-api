@@ -300,6 +300,14 @@ canvas.addEventListener('selectstart', function (e) { e.preventDefault(); return
 canvas.addEventListener('mouseup', function (evt) {
     var mousePos = getMousePos(canvas, evt);
     lastMousePos = mousePos;
+    if (mouseDownPos !== null) {
+        var start_row = Math.floor(mouseDownPos.y/CELL_SIZE);
+        var start_col = Math.floor(mouseDownPos.x/CELL_SIZE);
+        var end_row = Math.floor(lastMousePos.y/CELL_SIZE);
+        var end_col = Math.floor(lastMousePos.x/CELL_SIZE);
+        // universe = universe.try_move(start_row, start_col, end_row, end_col);   
+        universe.try_move(start_row, start_col, end_row, end_col);
+    }
     mouseDownPos = null;
 }, true)
 
