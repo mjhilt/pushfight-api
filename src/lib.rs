@@ -34,40 +34,57 @@ pub struct Universe {
     pieces: Vec<Piece>
 }
 
+#[wasm_bindgen]
+extern {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(msg: &str);
+}
+
+// A macro to provide `println!(..)`-style syntax for `console.log` logging.
+macro_rules! log {
+    ($($t:tt)*) => (log(&format!($($t)*)))
+}
+
 impl Universe {
     fn get_index(&self, row: u32, column: u32) -> usize {
         (row * self.width + column) as usize
     }
-    fn in_bounds(&self, row: u32, col: u32) -> bool {
-        return row >= 0 && row < self.height && col >= 0 && col < self.width;
+    fn in_bounds(&self, row: i32, col: i32) -> bool {
+        return row >= 0 && row < self.height as i32 && col >= 0 && col < self.width as i32;
     }
-    fn valid_step(&self, to_row: u32, to_column: u32) -> bool {
-        return self.in_bounds(to_row, to_column) && self.pieces[self.get_index(to_row, to_column)] == Piece::Empty;
+    fn valid_step(&self, to_row: i32, to_column: i32) -> bool {
+        return self.in_bounds(to_row, to_column) && self.pieces[self.get_index(to_row as u32, to_column as u32)] == Piece::Empty;
     }
     fn can_move(&self, start_row: u32, start_column: u32, end_row: u32, end_column: u32) -> bool {
+        if start_row == end_row && start_column == end_column {
+            return false;
+        }
+        if !self.in_bounds(start_row as i32, start_column as i32) {
+            log("start row({}) col({}) not in bounds");
+            return false;
+        }
+        if !self.in_bounds(end_row as i32, end_column as i32) {
+            log("end row({}) col({}) not in bounds");
+            return false;
+        }
         if 
             (self.pieces[self.get_index(start_row, start_column)] == Piece::Empty) ||
             (self.pieces[self.get_index(start_row, start_column)] == Piece::Abyss) {
             return false;
         }
         let mut to_explore = Vec::new();
-        to_explore.push((start_row, start_column));
+        to_explore.push((start_row as i32, start_column as i32));
         let mut have_explored = HashSet::new();
         while let Some((row, column)) = to_explore.pop() {
-            if row == end_row && column == end_column {
+            if row == end_row as i32 && column == end_column as i32 {
                 return true;
             }
             have_explored.insert((row, column));
-            for delta_row in [self.height - 1, 0, 1].iter().cloned() {
-                for delta_column in [self.width - 1, 0, 1].iter().cloned() {
-                    if delta_row == 0 && delta_column == 0 {
-                        continue;
-                    }
-                    let next_row = row + delta_row; 
-                    let next_column = column + delta_column; 
-                    if self.valid_step(next_row, next_column) && !have_explored.contains(&(next_row, next_column)) {
-                        to_explore.push((next_row, next_column));
-                    }
+            for (delta_row, delta_column) in [(-1, 0), (0, -1), (1, 0), (0, 1)].iter().cloned() {
+                let next_row = row as i32 + delta_row; 
+                let next_column = column as i32 + delta_column; 
+                if self.valid_step(next_row, next_column) && !have_explored.contains(&(next_row, next_column)) {
+                    to_explore.push((next_row, next_column));
                 }
             }
         }
@@ -146,7 +163,35 @@ impl Universe {
     pub fn cells(&self) -> *const Piece {
         self.pieces.as_ptr()
     }
+
+    pub fn try_move(&mut self, start_row: u32, start_column: u32, end_row: u32, end_column: u32) {
+        // if self.can_move(start_row, start_column, end_row, end_column) {
+        //     self.pieces[self.get_index(end_row, end_column)] = self.pieces[self.get_index(start_row, start_column)];
+        // }
+        let indices = {
+            if self.can_move(start_row, start_column, end_row, end_column) {
+                let from_ix = self.get_index(start_row, start_column);
+                let to_ix = self.get_index(end_row, end_column);
+                Some((to_ix, from_ix))
+            }
+            else
+            {
+                None
+            }
+        };
+
+        // return;
+
+        // let mut other_pieces = self.pieces.clone();
+        if let Some((to_ix, from_ix)) = indices {
+            self.pieces[to_ix] = self.pieces[from_ix];
+            log!("moving {} -> {}", from_ix, to_ix);
+            self.pieces[from_ix] = Piece::Empty;
+        }
+        // Universe{width: self.width, height: self.height, pieces: other_pieces}
+    }
 }
+
 impl fmt::Display for Universe {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for line in self.pieces.as_slice().chunks(self.width as usize) {
@@ -160,3 +205,4 @@ impl fmt::Display for Universe {
         Ok(())
     }
 }
+
