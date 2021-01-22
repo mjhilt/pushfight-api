@@ -5,6 +5,7 @@ import bottle as b
 # from bottle import route, run, template
 
 from pushfight import EXAMPLE_BOARD
+from db_interface import db
 
 games = {}
 users = {}
@@ -17,9 +18,15 @@ def init_board():
 def validate_user(user):
     return True
 
+def check_pw(a, b):
+    # This should do a hash of the plaintext password to compare against a stored hashed version
+    return a == b
 
 def check_cred(user, password):
-    return True
+    for rec in db.find('users', user, key='email'):
+        stored = reg.get('password')
+        return stored and check_pw(stored, password)
+    return False
 
 
 def new_anonymous_user():
