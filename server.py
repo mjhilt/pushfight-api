@@ -1,6 +1,7 @@
 import sys
 import random
 import bcrypt
+import base64
 
 import bottle as b
 # from bottle import route, run, template
@@ -18,24 +19,15 @@ def init_board():
 
 # We use bcrypt to do the actual hashing and comparisons
 def hash_pw(plaintext):
-    return bcrypt.hashpw(plaintext, bcrypt.gensalt())
+    return bcrypt.hashpw(plaintext.encode(), bcrypt.gensalt())
 
 def check_pw(pw, hashed):
     return bcrypt.checkpw(pw, hashed)
 
-
-# These are just more generic names for doing the bcrypt based stuff
-def sign_string(string):
-    return hash_pw(session_key+string)
-
-def validate_string(string, hashed):
-    return check_pw(session_key+string, hashed)
-
-
 def check_cred(user, password):
     # Check a user's stored password against a presented one
     for rec in db.find('users', user, key='email'):
-        stored = reg.get('password')
+        stored = rec.get('password')
         return stored and check_pw(password, stored)
     return False
 
@@ -84,20 +76,31 @@ class Game(object):
 
 @b.post('/1/login')
 def login():
-    # Body: {user: `<uuid>`, password: "secret"} - base64 encoded though
-    body = b.request
+    # Body: {user: `<uuid>`, password: <base64 encoded password>}
+    body = b.request.json
+    if not body:
+        b.abort(400, "Bad request")
     user = body.get('user')
     password = body.get('password')
     if not user or not password:
-        b.abort('400', "Bad request")
+        b.abort(400, "Bad request")
 
-    is_valid_user = check_cred(user, password)
+    is_valid_user = check_cred(user, base64.b64decode(bytes(password, 'utf8')))
     if not is_valid_user:
-        b.abort('403', "Login not correct")
+        b.abort(403, "Login not correct")
 
-    b.response.set_cookie("user", user)
-    b.response.set_cookie("auth", sign_string(user))
-    b.response.status_code = 204
+    b.response.set_cookie("user", user, secret=session_key)
+    return
+
+
+@b.post('/1/checkuser')
+def check_user():
+    # Testing endpoint for the cookie
+    user = b.request.get_cookie("user", secret=session_key)
+    if user:
+        return b.Response(user)
+    else:
+        b.abort(401, "Bad cookie")
 
 
 @b.get('/1/games')
@@ -125,8 +128,8 @@ def gameStart_1():
 
     user = b.request.query.user
     if user:
-        if not validate_string(user, request.get_cookie("auth")):
-            b.abort('401', "Bad cookie")
+        if user != b.request.get_cookie("user", secret=session_key):
+            b.abort(401, "Bad cookie")
     else:
         user = new_anonymous_user()
 
@@ -165,8 +168,8 @@ def post_game_join():
 
     user = body.get('user')
     if user:
-        if not validate_string(user, request.get_cookie("auth")):
-            b.abort('401', "Bad cookie")
+        if user != b.request.get_cookie("user", secret=session_key):
+            b.abort(401, "Bad cookie")
     else:
         user = new_anonymous_user()
 

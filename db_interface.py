@@ -25,18 +25,18 @@ class TestDB(Base):
         2: {"_id": 2,
             "email": "mjhilt@gmail.com",
             "name": "Dad-bod",
-            "password": "salted:hashed_password"
+            "password": b'$2b$12$ziwcNkz2FOh3WwBrlbm4P.jDlsFl81alu/Wsj5fyz1u0eM4jaZfky'
         },
-    ]
+    }
 
     GAMES = {
     }
 
     def get(self, bucket, key):
         if bucket == 'users':
-            return USERS.get(key, {})
+            return self.USERS.get(key, {})
         elif bucket == 'games':
-            return GAMES.get(key, {})
+            return self.GAMES.get(key, {})
         raise KeyError  # No such bucket
 
     def put(self, bucket, key, value):
@@ -51,18 +51,18 @@ class TestDB(Base):
             raise ValueError
 
         if bucket == 'users':
-            USERS[_id] = value
+            self.USERS[_id] = value
         elif bucket == 'games':
-            GAMES[_id] = value
+            self.GAMES[_id] = value
         raise KeyError  # No such bucket
 
     def delete(self, key):
         if not isinstance(key, int):
             raise ValueError
         if bucket == 'users':
-            del USERS[_id]
+            del self.USERS[_id]
         elif bucket == 'games':
-            del GAMES[_id]
+            del self.GAMES[_id]
         raise KeyError  # No such bucket
 
     def find(self, bucket, value, key=None):
@@ -71,8 +71,8 @@ class TestDB(Base):
             # Because then you can't search for "None" as a key
             key = '_id'
         if bucket == 'users':
-            return user for user in USERS if (key == user.get(key))
+            return (user for user in self.USERS.values() if (value == user.get(key)))
         elif bucket == 'games':
-            return game for game in GAMES if (key == game.get(key))
+            return (game for game in self.GAMES.values() if (value == game.get(key)))
 
 db = TestDB()
