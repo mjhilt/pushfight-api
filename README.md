@@ -10,34 +10,36 @@ POST /1/login
   * Body: {user: `<uuid>`, password: "secret"}
   * Returns: 200 + a cookie
 
-GET /1/games
+GET /1/opengames
   * Get a list of available games to join
-  * Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`, name: "death match"}, ...]}
+  * Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
 
-GET /1/game/start?join=`<bool>`&user=`<uuid>`
-  * Initialize a new game from an anonymous user
-  * Optional query param "join" allows instant joining of any available game
-  * Optional query param "user" allows joining as a know user
-  * Returns: {game: `<uuid>`, user: `<uuid>`, status: "waiting"|"started", [state: `<boardState>`, color: "white"|"black"]}
-  * A cookie is also set if a game is anonymously joined
+GET /1/mygames?user=`<uuid>`
+  * Get a list of games where "user" is a player
+  * Required query param "user"
+
+POST /1/game/start
+  * Initialize a new game
+  * Body: {user: `<uuid>`, color=`<color>`}
+  * Optional body param "color"("white"|"black") specifies which color user will play in game. Otherwise a random color is chosen
+  * Returns: {game: `<uuid>`, state: `<boardState>`, color: "white"|"black"}
   * Errors: 404 if game or user is not found, 401 if user is not authenticated
 
 POST /1/game/join
   * Join an available game
-  * Body: {game: `<uuid>`, [user: `<uuid>`]}
-  * Optional body param "user" allows joining as a know user
+  * Body: {game: `<uuid>`, user: `<uuid>`}
   * Returns: {state: `<boardState>`, color: "white"|"black"}
   * Errors: 400 if game is already reserved, 404 if game or user is not found, 401 if user is not authenticated
 
 GET /1/game/status?game=`<uuid>`
   * Check the board state and turn status of a game
-  * Returns: {game: `<uuid>`, state: `<boardState>`, turn: "white"|"black"}
+  * Returns: {game: `<uuid>`, state: `<boardState>`, turn: "white"|"black", gameStage:"setup"|"ongoing"|"over"}
   * Errors: 404 if game is not found, 401 if user is not authenticated
 
 POST /1/move
   * Make a move - Returns validation if you won or not
-  * Body: {game: `<uuid>`, moves: [`<boardState>`,...]}
-  * Returns: {win: `<bool>`}
+  * Body: {game: `<uuid>`, user: `<uuid>`, startBoard: `<boardState>`, moves: [`<move>`], endBoard: `<boardState>`}
+  * Returns: {moveAccepted: `<bool>`, gameStage:"setup"|"ongoing"|"over"}
   * Errors: 400 if move is not valid, 401 if user is not authenticated, 403 if it is not your turn
 
 
@@ -73,6 +75,14 @@ An example of a valid starting board state object is then given by:
   bp3: [3,5],
   bm1: [2,5],
   bm2: [1,6],
-  anchor: [0,0]
+  anchor: None,
 }
+```
+
+A move is just a list of 1,2,or 3 from/to pairs. A valid move would be
+```
+[
+  {from: [0,4], to: [0,5]},
+  {from: [2,3], to: [3,3]},
+]
 ```
