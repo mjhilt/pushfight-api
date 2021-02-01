@@ -1,5 +1,6 @@
 import sys
 import random
+import bcrypt
 
 import bottle as b
 # from bottle import route, run, template
@@ -9,23 +10,33 @@ from db_interface import db
 
 games = {}
 users = {}
-
+session_key = 'a super secret string we should read from some file'
 
 def init_board():
     return EXAMPLE_BOARD
 
 
-def validate_user(user):
-    return True
+# We use bcrypt to do the actual hashing and comparisons
+def hash_pw(plaintext):
+    return bcrypt.hashpw(plaintext, bcrypt.gensalt())
 
-def check_pw(a, b):
-    # This should do a hash of the plaintext password to compare against a stored hashed version
-    return a == b
+def check_pw(pw, hashed):
+    return bcrypt.checkpw(pw, hashed)
+
+
+# These are just more generic names for doing the bcrypt based stuff
+def sign_string(string):
+    return hash_pw(session_key+string)
+
+def validate_string(string, hashed):
+    return check_pw(session_key+string, hashed)
+
 
 def check_cred(user, password):
+    # Check a user's stored password against a presented one
     for rec in db.find('users', user, key='email'):
         stored = reg.get('password')
-        return stored and check_pw(stored, password)
+        return stored and check_pw(password, stored)
     return False
 
 
@@ -73,8 +84,7 @@ class Game(object):
 
 @b.post('/1/login')
 def login():
-    # Body: {user: `<uuid>`, password: "secret"}
-    raise NotImplementedError
+    # Body: {user: `<uuid>`, password: "secret"} - base64 encoded though
     body = b.request
     user = body.get('user')
     password = body.get('password')
@@ -85,8 +95,8 @@ def login():
     if not is_valid_user:
         b.abort('403', "Login not correct")
 
-    # cookie = make_cookie(user)
-    # b.response.set_cookie(cookie)
+    b.response.set_cookie("user", user)
+    b.response.set_cookie("auth", sign_string(user))
     b.response.status_code = 204
 
 
@@ -115,8 +125,8 @@ def gameStart_1():
 
     user = b.request.query.user
     if user:
-        # Throw/return error code if bad user
-        validate_user(user)
+        if not validate_string(user, request.get_cookie("auth")):
+            b.abort('401', "Bad cookie")
     else:
         user = new_anonymous_user()
 
@@ -155,7 +165,8 @@ def post_game_join():
 
     user = body.get('user')
     if user:
-        validate_user(user)
+        if not validate_string(user, request.get_cookie("auth")):
+            b.abort('401', "Bad cookie")
     else:
         user = new_anonymous_user()
 
