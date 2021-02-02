@@ -103,16 +103,32 @@ def check_user():
         b.abort(401, "Bad cookie")
 
 
-@b.get('/1/games')
+@b.get('/1/opengames')
 def get_games():
-    # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`, name: "death match"}, ...]}
-    game_data = [{
-        "game": g.id,
-        # "opponent": g.players[0],
-        "players": ",".join(g.players),
-        "name": g.name
-    } for g in games]
+    # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
+    game_data = []
+    # TODO: should limit the number of returned results
+    for g in db.find("games", "waiting_for_players", key="game_status"):
+        opponent = g["white_player"]
+        game_data.append({
+            "game": g["_id"],
+            "opponent": opponent if opponent else g["black_player"],
+        })
     return {"games": game_data}
+
+
+@b.get('/1/mygames')
+def get_games():
+    # Returns: {games: [`<uuid>`, ...]}
+    user = request.query.user
+    if user != b.request.get_cookie("user", secret=session_key):
+        b.abort(401, "Bad cookie")
+
+    games = []
+    for key in ("white_player", "black_player"):
+        games += [g["_id"] for g in db.find("games", user, key=key)]
+    return {"games": games}
+
 
 def find_open_game():
     for gid, game in games.items():
