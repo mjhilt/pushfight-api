@@ -15,30 +15,40 @@ GET /1/opengames
   * Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
 
 GET /1/mygames?user=`<uuid>`
-  * Get a list of games where "user" is a player
+  * Get a list of games where you, "user" is a player
   * Required query param "user"
+  * Returns: {games: [{game: `<uuid>`}, ...]}
+
+POST /1/game/challenge
+  * Challenge a specific user to a new game
+  * Body: {user: `<uuid>`, opponent:`<uuid>`, color:`<color>`, timed:`<bool>`}
+  * timed == true indicates that this is a timed game
+  * Optional body param "color"("white"|"black") specifies which color user will play in game. Otherwise a random color is chosen
+  * Returns: {game: `<uuid>`, state: `<boardState>`, color: "white"|"black", timer:`<timeStatus>`}
+  * Errors: 404 if either user is not found, 401 if user is not authenticated
 
 POST /1/game/start
   * Initialize a new game
-  * Body: {user: `<uuid>`, color=`<color>`}
+  * Body: {user: `<uuid>`, color:`<color>`, timed:`<bool>`}
+  * timed == true indicates that this is a timed game
   * Optional body param "color"("white"|"black") specifies which color user will play in game. Otherwise a random color is chosen
-  * Returns: {game: `<uuid>`, state: `<boardState>`, color: "white"|"black"}
-  * Errors: 404 if game or user is not found, 401 if user is not authenticated
+  * Returns: {game: `<uuid>`, state: `<boardState>`, color: "white"|"black", timer:`<timeStatus>`}
+  * Errors: 404 if user is not found, 401 if user is not authenticated
 
 POST /1/game/join
   * Join an available game
   * Body: {game: `<uuid>`, user: `<uuid>`}
-  * Returns: {state: `<boardState>`, color: "white"|"black"}
+  * Returns: {state: `<boardState>`, color: "white"|"black", timer:`<timeStatus>`}
   * Errors: 400 if game is already reserved, 404 if game or user is not found, 401 if user is not authenticated
 
 GET /1/game/status?game=`<uuid>`
   * Check the board state and turn status of a game
-  * Returns: {game: `<uuid>`, state: `<boardState>`, turn: "white"|"black", gameStage:"setup"|"ongoing"|"over"}
+  * Returns: {game: `<uuid>`, state: `<boardState>`, turn: "white"|"black", gameStage:"setup"|"ongoing"|"whiteWon"|"blackWon"|"draw", timer:`<timeStatus>`}
   * Errors: 404 if game is not found, 401 if user is not authenticated
 
 POST /1/move
   * Make a move - Returns validation if you won or not
-  * Body: {game: `<uuid>`, user: `<uuid>`, startBoard: `<boardState>`, moves: [`<move>`], endBoard: `<boardState>`}
+  * Body: {game: `<uuid>`, user: `<uuid>`, startBoard: `<boardState>`, moves: [`<move>`], endBoard: `<boardState>`, timer:`<timeStatus>`}
   * Returns: {moveAccepted: `<bool>`, gameStage:"setup"|"ongoing"|"over"}
   * Errors: 400 if move is not valid, 401 if user is not authenticated, 403 if it is not your turn
 
@@ -86,3 +96,10 @@ A move is just a list of 1,2,or 3 from/to pairs. A valid move would be
   {from: [2,3], to: [3,3]},
 ]
 ```
+
+A time status is either `null` or
+{
+  "white_time_remaining": `<int>`,
+  "black_time_remaining": `<int>`,
+  "additional_time_per_turn": `<int>`
+}
