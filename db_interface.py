@@ -1,4 +1,4 @@
-import bcrypt
+from utils import hash_pw, check_pw
 
 # A generic interface that lets us swap out backends with somewhat more ease
 
@@ -14,14 +14,6 @@ class Base(object):
 
     def find(self, bucket, value, key=None):
         raise NotImplementedError
-
-# We use bcrypt to do the actual hashing and comparisons
-def hash_pw(plaintext):
-    return bcrypt.hashpw(plaintext.encode(), bcrypt.gensalt())
-
-def check_pw(pw, hashed):
-    return bcrypt.checkpw(pw, hashed)
-
 
 class TestDB(Base):
     # can infer is_setup and current turn from data
@@ -57,7 +49,7 @@ class TestDB(Base):
         2: {"_id": 2,
             "email": "mjhilt@gmail.com",
             "name": "Dad-bod",
-            "password": hash_pw('$2b$12$ziwcNkz2FOh3WwBrlbm4P.jDlsFl81alu/Wsj5fyz1u0eM4jaZfky')
+            "password": b'$2b$12$ziwcNkz2FOh3WwBrlbm4P.jDlsFl81alu/Wsj5fyz1u0eM4jaZfky'
         },
     }
 

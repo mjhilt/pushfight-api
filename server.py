@@ -6,7 +6,8 @@ import bottle as b
 # from bottle import route, run, template
 
 from pushfight import EXAMPLE_BOARD
-from db_interface import db, hash_pw, check_pw
+from db_interface import db
+from utils import hash_pw, check_pw
 
 games = {}
 users = {}
@@ -76,7 +77,7 @@ def login():
     if not user or not password:
         b.abort(400, "Bad request")
 
-    is_valid_user = check_cred(user, password.encode())
+    is_valid_user = check_cred(user, base64.b64decode(bytes(password, 'utf8')))
     if not is_valid_user:
         b.abort(403, "Login not correct")
 

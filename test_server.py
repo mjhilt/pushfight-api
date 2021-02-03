@@ -1,9 +1,9 @@
 # import base64
 import server
 import bottle as b
+from utils import b64encode
 
 from boddle import boddle
-
 
 def test_login():
     with boddle(json={'user': "TeaUponTweed@gmail.com"}):
@@ -14,14 +14,14 @@ def test_login():
             assert e.status_code == 400
             # print(e)
 
-    with boddle(json={'user': "TeaUponTweed@gmail.com", 'password': 'wrong'}):
+    with boddle(json={'user': "TeaUponTweed@gmail.com", 'password': b64encode('wrong')}):
         # print(b.request.json)
         try:
             server.login()
         except b.HTTPError as e:
             assert e.status_code == 403
 
-    with boddle(json={'user': "TeaUponTweed@gmail.com", 'password': "salted:hashed_password"}):
+    with boddle(json={'user': "TeaUponTweed@gmail.com", 'password': b64encode("salted:hashed_password")}):
         server.login()
         # TODO can't figure out how to inspect cookies, I'm sure it's fine
 
