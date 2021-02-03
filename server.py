@@ -1,6 +1,5 @@
 import sys
 import random
-import bcrypt
 import base64
 
 import bottle as b
@@ -8,6 +7,7 @@ import bottle as b
 
 from pushfight import EXAMPLE_BOARD
 from db_interface import db
+from utils import hash_pw, check_pw
 
 games = {}
 users = {}
@@ -16,13 +16,6 @@ session_key = 'a super secret string we should read from some file'
 def init_board():
     return EXAMPLE_BOARD
 
-
-# We use bcrypt to do the actual hashing and comparisons
-def hash_pw(plaintext):
-    return bcrypt.hashpw(plaintext.encode(), bcrypt.gensalt())
-
-def check_pw(pw, hashed):
-    return bcrypt.checkpw(pw, hashed)
 
 def check_cred(user, password):
     # Check a user's stored password against a presented one
@@ -55,7 +48,6 @@ def get_game_uuid(game):
 
 def find_game_by_id(gid):
     return games[gid]
-
 
 class Game(object):
     def __init__(self, user, name):
@@ -213,4 +205,5 @@ def post_move():
     raise NotImplementedError
 
 
-b.run(host='localhost', port=8080)
+if __name__ == '__main__':
+    b.run(host='localhost', port=8080)
