@@ -1,6 +1,7 @@
 import sys
 import random
 import base64
+import time
 
 import bottle as b
 # from bottle import route, run, template
@@ -96,7 +97,7 @@ def check_user():
 
 
 @b.get('/1/opengames')
-def get_games():
+def get_open_games():
     # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
     game_data = []
     # TODO: should limit the number of returned results
@@ -110,7 +111,7 @@ def get_games():
 
 
 @b.get('/1/mygames')
-def get_games():
+def get_my_games():
     # Returns: {games: [`<uuid>`, ...]}
     user = request.query.user
     if user != b.request.get_cookie("user", secret=session_key):
@@ -121,6 +122,66 @@ def get_games():
         games += [g["_id"] for g in db.find("games", user, key=key)]
     return {"games": games}
 
+
+def make_game(user1, user2, color='white', timed=False):
+    _id = '{}_{}_{}'.format(user1, user2, int(time.time()))
+    return {
+            "_id": _id,
+            "white_player": user1 if color == 'white' else user2,
+            "black_player": user2 if color == 'white' else user1,
+            "white_setup": None,
+            "black_setup": None,
+            "turns": [],
+            "game_status": "setup",
+        }
+
+
+@b.post('1/game/challenge')
+def post_challenge():
+    opponent = None
+    for rec in db.find('users', body.opponent, key='email'):
+        opponent = rec
+        break
+    if opponent is None:
+        b.abort(404, "No such opponent")
+    return start_impl(opponent=opponent)
+
+
+@b.post('1/game/start')
+def post_start():
+    return start_impl()
+
+
+def start_impl(opponent=None):
+    body = b.request
+    username = body.user
+    if username != b.request.get_cookie("user", secret=session_key):
+        b.abort(401, "Bad cookie")
+
+    # TODO: This is really dumb that we look up the user to check the cookie
+    #       but then look it up again here. We should fix that.
+    for rec in db.find('users', username, key='email'):
+        user = rec
+        break
+
+    try:
+        color = body.color
+    except KeyError:
+        color = 'white'
+
+    try:
+        timed = body.timed
+    except KeyError:
+        timed = False
+
+    game = make_game(user['_id'], opponent['_id'], color=color, timed=timed)
+    db.put('games', '_id', game)
+    return {
+        "game": game['_id'],
+        "state": None, # TODO
+        "color": color,
+        "timer": None, # TODO
+    }
 
 def find_open_game():
     for gid, game in games.items():
