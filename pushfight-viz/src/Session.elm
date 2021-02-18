@@ -1,6 +1,6 @@
-module Session exposing (Session, changes, cred, fromViewer, navKey, viewer)
+module Session exposing (Session, changes, cred, fromViewer, navKey)
 
-import Api exposing (Cred)
+import Api exposing (Cred, credDecoder)
 import Avatar exposing (Avatar)
 import Browser.Navigation as Nav
 import Json.Decode as Decode exposing (Decoder)
@@ -15,7 +15,7 @@ import Viewer exposing (Viewer)
 
 
 type Session
-    = LoggedIn Nav.Key Viewer
+    = LoggedIn Nav.Key Cred
     | Guest Nav.Key
 
 
@@ -23,21 +23,21 @@ type Session
 -- INFO
 
 
-viewer : Session -> Maybe Viewer
-viewer session =
-    case session of
-        LoggedIn _ val ->
-            Just val
+--viewer : Session -> Maybe Cred
+--viewer session =
+--    case session of
+--        LoggedIn _ val ->
+--            Just val
 
-        Guest _ ->
-            Nothing
+--        Guest _ ->
+--            Nothing
 
 
 cred : Session -> Maybe Cred
 cred session =
     case session of
-        LoggedIn _ val ->
-            Just (Viewer.cred val)
+        LoggedIn _ cred ->
+            Just cred
 
         Guest _ ->
             Nothing
@@ -59,15 +59,15 @@ navKey session =
 
 changes : (Session -> msg) -> Nav.Key -> Sub msg
 changes toMsg key =
-    Api.viewerChanges (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Viewer.decoder
+    Api.viewerChanges (\maybeCred -> toMsg (fromViewer key maybeCred)) credDecoder
 
 
-fromViewer : Nav.Key -> Maybe Viewer -> Session
-fromViewer key maybeViewer =
+fromViewer : Nav.Key -> Maybe Cred -> Session
+fromViewer key maybeCred =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
     -- decode that String as JSON.
-    case maybeViewer of
+    case maybeCred of
         Just viewerVal ->
             LoggedIn key viewerVal
 

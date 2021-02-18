@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, get, post, unwrap, login, opengames, mygames, gameChallenge, gameStart, gameJoin, gameStatus, move)
+module Api.Endpoint exposing (Endpoint, get, post, unwrap, login, opengames, mygames, gameChallenge, gameStart, gameJoin, gameStatus, move, register)
 import Http
 
 
@@ -51,6 +51,10 @@ url paths queryParams =
 login : Endpoint -- POST
 login = 
     url ["login"] []
+
+register : Endpoint  -- POST
+register =
+    url ["register"] []
 
 opengames : Endpoint -- GET
 opengames = 

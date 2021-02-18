@@ -247,7 +247,7 @@ subscriptions model =
 
 main : Program Value Model Msg
 main =
-    Api.application Viewer.decoder
+    Browser.application
         { init = init
         , onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink
@@ -255,3 +255,12 @@ main =
         , update = update
         , view = view
         }
+
+    --Api.application Viewer.decoder
+    --    { init = init
+    --    , onUrlChange = ChangedUrl
+    --    , onUrlRequest = ClickedLink
+    --    , subscriptions = subscriptions
+    --    , update = update
+    --    , view = view
+    --    }

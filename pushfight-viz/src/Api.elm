@@ -1,4 +1,4 @@
-port module Api exposing (Cred, addServerError, application, storeCredWith, username, viewerChanges, login, logout)
+port module Api exposing (Cred, username, login, logout, credDecoder, storeCredWith)
 
 {-| This module is responsible for communicating to the Conduit API.
 It exposes an opaque Endpoint type which is guaranteed to point to the correct URL.
@@ -60,7 +60,7 @@ credDecoder =
 -- PERSISTENCE
 
 
-decode : Decoder (Cred -> viewer) -> Value -> Result Decode.Error viewer
+decode : Decoder (Cred -> a) -> Value -> Result Decode.Error a
 decode decoder value =
     -- It's stored in localStorage as a JSON String;
     -- first decode the Value as a String, then
@@ -72,22 +72,26 @@ decode decoder value =
 port onStoreChange : (Value -> msg) -> Sub msg
 
 
-viewerChanges : (Maybe viewer -> msg) -> Decoder (Cred -> viewer) -> Sub msg
-viewerChanges toMsg decoder =
-    onStoreChange (\value -> toMsg (decodeFromChange decoder value))
+credChanges : (Maybe Cred -> msg) -> Sub msg
+credChanges toMsg =
+    onStoreChange (\value -> toMsg (Decode.decodeValue credDecoder value |> Result.toMaybe ) )
+--viewerChanges : (Maybe Cred -> msg) -> Decoder Cred -> Sub msg
+--viewerChanges toMsg decoder =
+--    --onStoreChange
+--    onStoreChange (\value -> toMsg (decodeFromChange decoder value))
 
 
-decodeFromChange : Decoder (Cred -> viewer) -> Value -> Maybe viewer
-decodeFromChange viewerDecoder val =
-    -- It's stored in localStorage as a JSON String;
-    -- first decode the Value as a String, then
-    -- decode that String as JSON.
-    Decode.decodeValue (storageDecoder viewerDecoder) val
-        |> Result.toMaybe
+--decodeFromChange : Decoder (Cred -> viewer) -> Value -> Maybe viewer
+--decodeFromChange viewerDecoder val =
+--    -- It's stored in localStorage as a JSON String;
+--    -- first decode the Value as a String, then
+--    -- decode that String as JSON.
+--    Decode.decodeValue (storageDecoder viewerDecoder) val
+--        |> Result.toMaybe
 
 
-storeCredWith : Cred -> Avatar -> Cmd msg
-storeCredWith (Cred uname token) avatar =
+storeCredWith : Cred -> Cmd msg
+storeCredWith (Cred uname token) =
     let
         json =
             Encode.object
@@ -95,7 +99,6 @@ storeCredWith (Cred uname token) avatar =
                   , Encode.object
                         [ ( "username", Username.encode uname )
                         , ( "token", Encode.string token )
-                        , ( "image", Avatar.encode avatar )
                         ]
                   )
                 ]
@@ -124,41 +127,41 @@ port storeCache : Maybe Value -> Cmd msg
 -- APPLICATION
 
 
-application :
-    Decoder (Cred -> viewer)
-    ->
-        { init : Maybe viewer -> Url -> Nav.Key -> ( model, Cmd msg )
-        , onUrlChange : Url -> msg
-        , onUrlRequest : Browser.UrlRequest -> msg
-        , subscriptions : model -> Sub msg
-        , update : msg -> model -> ( model, Cmd msg )
-        , view : model -> Browser.Document msg
-        }
-    -> Program Value model msg
-application viewerDecoder config =
-    let
-        init flags url navKey =
-            let
-                maybeViewer =
-                    Decode.decodeValue Decode.string flags
-                        |> Result.andThen (Decode.decodeString (storageDecoder viewerDecoder))
-                        |> Result.toMaybe
-            in
-            config.init maybeViewer url navKey
-    in
-    Browser.application
-        { init = init
-        , onUrlChange = config.onUrlChange
-        , onUrlRequest = config.onUrlRequest
-        , subscriptions = config.subscriptions
-        , update = config.update
-        , view = config.view
-        }
+--application :
+--    Decoder (Cred -> viewer)
+--    ->
+--        { init : Maybe viewer -> Url -> Nav.Key -> ( model, Cmd msg )
+--        , onUrlChange : Url -> msg
+--        , onUrlRequest : Browser.UrlRequest -> msg
+--        , subscriptions : model -> Sub msg
+--        , update : msg -> model -> ( model, Cmd msg )
+--        , view : model -> Browser.Document msg
+--        }
+--    -> Program Value model msg
+--application viewerDecoder config =
+--    let
+--        init flags url navKey =
+--            let
+--                maybeViewer =
+--                    Decode.decodeValue Decode.string flags
+--                        |> Result.andThen (Decode.decodeString (storageDecoder viewerDecoder))
+--                        |> Result.toMaybe
+--            in
+--            config.init maybeViewer url navKey
+--    in
+--    Browser.application
+--        { init = init
+--        , onUrlChange = config.onUrlChange
+--        , onUrlRequest = config.onUrlRequest
+--        , subscriptions = config.subscriptions
+--        , update = config.update
+--        , view = config.view
+--        }
 
 
-storageDecoder : Decoder (Cred -> viewer) -> Decoder viewer
-storageDecoder viewerDecoder =
-    Decode.field "user" (decoderFromCred viewerDecoder)
+--storageDecoder : Decoder (Cred -> viewer) -> Decoder viewer
+--storageDecoder viewerDecoder =
+--    Decode.field "user" (decoderFromCred viewerDecoder)
 
 
 --login : Http.Body -> Decoder (Cred -> a) -> Cmd a
@@ -206,10 +209,10 @@ addServerError list =
 --            [ "Server error" ]
 
 
-errorsDecoder : Decoder (List String)
-errorsDecoder =
-    Decode.keyValuePairs (Decode.list Decode.string)
-        |> Decode.map (List.concatMap fromPair)
+--errorsDecoder : Decoder (List String)
+--errorsDecoder =
+--    Decode.keyValuePairs (Decode.list Decode.string)
+--        |> Decode.map (List.concatMap fromPair)
 
 
 fromPair : ( String, List String ) -> List String
@@ -218,14 +221,14 @@ fromPair ( field, errors ) =
 
 
 
--- LOCALSTORAGE KEYS
+---- LOCALSTORAGE KEYS
 
 
-cacheStorageKey : String
-cacheStorageKey =
-    "cache"
+--cacheStorageKey : String
+--cacheStorageKey =
+--    "cache"
 
 
-credStorageKey : String
-credStorageKey =
-    "cred"
+--credStorageKey : String
+--credStorageKey =
+--    "cred"
