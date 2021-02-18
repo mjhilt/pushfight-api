@@ -5,7 +5,7 @@ import Html.Events exposing (onClick)
 
 import Route exposing (Route)
 import Session exposing (Session)
-import Viewer exposing (Viewer)
+
 
 -- Model
 
@@ -28,15 +28,15 @@ init session =
 type Msg
     = ToggleNotifications
     | GotSession Session
-    | GotSession Session
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     ToggleNotifications ->
-      { model | notifications = not model.notifications}
-
+      ( { model | notifications = not model.notifications}, Cmd.none)
+    GotSession session ->
+      ( { model | session = session}, Cmd.none)
 
 
 -- VIEW

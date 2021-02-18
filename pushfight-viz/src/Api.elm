@@ -1,4 +1,4 @@
-port module Api exposing (Cred, username, login, logout, credDecoder, storeCredWith)
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, credDecoder, register, application)
 
 {-| This module is responsible for communicating to the Conduit API.
 It exposes an opaque Endpoint type which is guaranteed to point to the correct URL.
@@ -60,13 +60,13 @@ credDecoder =
 -- PERSISTENCE
 
 
-decode : Decoder (Cred -> a) -> Value -> Result Decode.Error a
-decode decoder value =
-    -- It's stored in localStorage as a JSON String;
-    -- first decode the Value as a String, then
-    -- decode that String as JSON.
-    Decode.decodeValue Decode.string value
-        |> Result.andThen (\str -> Decode.decodeString (Decode.field "user" (decoderFromCred decoder)) str)
+--decode : Decoder (Cred -> a) -> Value -> Result Decode.Error a
+--decode decoder value =
+--    -- It's stored in localStorage as a JSON String;
+--    -- first decode the Value as a String, then
+--    -- decode that String as JSON.
+--    Decode.decodeValue Decode.string value
+--        |> Result.andThen (\str -> Decode.decodeString (Decode.field "user" (decoderFromCred decoder)) str)
 
 
 port onStoreChange : (Value -> msg) -> Sub msg
@@ -89,9 +89,31 @@ credChanges toMsg =
 --    Decode.decodeValue (storageDecoder viewerDecoder) val
 --        |> Result.toMaybe
 
+--decoderFromCred : Decoder (Cred -> a) -> Decoder a
+--decoderFromCred decoder =
+--    Decode.map2 (\fromCred cred -> fromCred cred)
+--        decoder
+--        credDecoder
 
-storeCredWith : Cred -> Cmd msg
-storeCredWith (Cred uname token) =
+--decodeString : Decoder a -> Value -> Result Decode.Error a
+--decodeString decoder value =
+--    -- It's stored in localStorage as a JSON String;
+--    -- first decode the Value as a String, then
+--    -- decode that String as JSON.
+--    Decode.decodeValue Decode.string value
+--        |> Result.andThen (\str -> Decode.decodeString decoder str)
+
+
+--decodeString : Decoder a -> (Decoder String)
+--decodeString decoder =
+--    -- It's stored in localStorage as a JSON String;
+--    -- first decode the Value as a String, then
+--    -- decode that String as JSON.
+--    Decode.decodeValue Decode.string value
+--        |> Result.andThen (\str
+
+storeCred : Cred -> Cmd msg
+storeCred (Cred uname token) =
     let
         json =
             Encode.object
@@ -111,13 +133,13 @@ logout =
     storeCache Nothing
 
 
-login : Http.Body -> Decoder (Cred -> String) -> ((Result Http.Error String) -> msg) -> Cmd msg
-login body decoder msg =
-    post Endpoint.login body ( Http.expectJson msg (Decode.field "user" (decoderFromCred decoder)))
+login : Http.Body -> ((Result Http.Error Cred) -> msg) -> Cmd msg
+login body msg =
+    post Endpoint.login body (Http.expectJson msg credDecoder)
 
-register : Http.Body -> Decoder (Cred -> String) -> ((Result Http.Error String) -> msg) -> Cmd msg
-register body decoder msg =
-    post Endpoint.register body ( Http.expectJson msg (Decode.field "user" (decoderFromCred decoder)))
+register : Http.Body -> ((Result Http.Error Cred) -> msg) -> Cmd msg
+register body msg =
+    post Endpoint.register body (Http.expectJson msg credDecoder)
 
 port storeCache : Maybe Value -> Cmd msg
 
@@ -127,36 +149,34 @@ port storeCache : Maybe Value -> Cmd msg
 -- APPLICATION
 
 
---application :
---    Decoder (Cred -> viewer)
---    ->
---        { init : Maybe viewer -> Url -> Nav.Key -> ( model, Cmd msg )
---        , onUrlChange : Url -> msg
---        , onUrlRequest : Browser.UrlRequest -> msg
---        , subscriptions : model -> Sub msg
---        , update : msg -> model -> ( model, Cmd msg )
---        , view : model -> Browser.Document msg
---        }
---    -> Program Value model msg
---application viewerDecoder config =
---    let
---        init flags url navKey =
---            let
---                maybeViewer =
---                    Decode.decodeValue Decode.string flags
---                        |> Result.andThen (Decode.decodeString (storageDecoder viewerDecoder))
---                        |> Result.toMaybe
---            in
---            config.init maybeViewer url navKey
---    in
---    Browser.application
---        { init = init
---        , onUrlChange = config.onUrlChange
---        , onUrlRequest = config.onUrlRequest
---        , subscriptions = config.subscriptions
---        , update = config.update
---        , view = config.view
---        }
+application :
+        { init : Maybe Cred -> Url -> Nav.Key -> ( model, Cmd msg )
+        , onUrlChange : Url -> msg
+        , onUrlRequest : Browser.UrlRequest -> msg
+        , subscriptions : model -> Sub msg
+        , update : msg -> model -> ( model, Cmd msg )
+        , view : model -> Browser.Document msg
+        }
+    -> Program Value model msg
+application config =
+    let
+        init flags url navKey =
+            let
+                maybeCred =
+                    Decode.decodeValue Decode.string flags
+                        |> Result.andThen (Decode.decodeString credDecoder)
+                        |> Result.toMaybe
+            in
+            config.init maybeCred url navKey
+    in
+    Browser.application
+        { init = init
+        , onUrlChange = config.onUrlChange
+        , onUrlRequest = config.onUrlRequest
+        , subscriptions = config.subscriptions
+        , update = config.update
+        , view = config.view
+        }
 
 
 --storageDecoder : Decoder (Cred -> viewer) -> Decoder viewer

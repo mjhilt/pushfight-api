@@ -14,7 +14,6 @@ import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
-import Viewer exposing (Viewer)
 
 
 
@@ -144,7 +143,7 @@ type Msg
     = SubmittedForm
     | EnteredEmail String
     | EnteredPassword String
-    | CompletedLogin (Result Http.Error Viewer)
+    | CompletedLogin (Result Http.Error Cred)
     | GotSession Session
 
 
@@ -155,7 +154,7 @@ update msg model =
             case validate model.form of
                 Ok validForm ->
                     ( { model | problems = [] }
-                    , Http.send CompletedLogin (login validForm)
+                    , login validForm
                     )
 
                 Err problems ->
@@ -179,9 +178,9 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedLogin (Ok viewer) ->
+        CompletedLogin (Ok cred) ->
             ( model
-            , Viewer.store viewer
+            , Api.storeCred cred
             )
 
         GotSession session ->
@@ -295,7 +294,7 @@ login (Trimmed form) =
             Encode.object [ ( "user", user ) ]
                 |> Http.jsonBody
     in
-    Api.login body Viewer.decoder CompletedLogin
+    Api.login body CompletedLogin
 
 
 

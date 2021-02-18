@@ -12,7 +12,7 @@ import Html.Events exposing (onClick)
 import Http
 --import Loading
 --import Log
-import Page
+--import Page
 --import PaginatedList exposing (PaginatedList)
 import Session exposing (Session)
 import Task exposing (Task)
@@ -28,12 +28,6 @@ import Username exposing (Username)
 type alias Model =
     { session : Session
     }
-
-
-type FeedTab
-    = YourFeed Cred
-    | GlobalFeed
-    | TagFeed Tag
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -60,13 +54,15 @@ view model =
 
 type Msg
     = NoOp
+    | GotSession Session
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp tag ->
+        NoOp ->
             (model, Cmd.none)
-
+        GotSession session ->
+            ({model | session = session}, Cmd.none)
 
 -- SUBSCRIPTIONS
 

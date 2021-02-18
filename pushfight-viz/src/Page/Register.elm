@@ -11,8 +11,7 @@ import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
-import Viewer exposing (Viewer)
-
+--import Endpoint exposing (post, register)
 
 
 -- MODEL
@@ -137,7 +136,7 @@ type Msg
     | EnteredEmail String
     | EnteredUsername String
     | EnteredPassword String
-    | CompletedRegister (Result Http.Error Viewer)
+    | CompletedRegister (Result Http.Error Cred)
     | GotSession Session
 
 
@@ -148,7 +147,7 @@ update msg model =
             case validate model.form of
                 Ok validForm ->
                     ( { model | problems = [] }
-                    , Http.send CompletedRegister (register validForm)
+                    , register validForm
                     )
 
                 Err problems ->
@@ -175,9 +174,9 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedRegister (Ok viewer) ->
+        CompletedRegister (Ok cred) ->
             ( model
-            , Viewer.store viewer
+            , Api.storeCred cred
             )
 
         GotSession session ->
@@ -277,9 +276,6 @@ validateField (Trimmed form) field =
                 if String.isEmpty form.password then
                     [ "password can't be blank." ]
 
-                else if String.length form.password < Viewer.minPasswordChars then
-                    [ "password must be at least " ++ String.fromInt Viewer.minPasswordChars ++ " characters long." ]
-
                 else
                     []
 
@@ -300,7 +296,7 @@ trimFields form =
 -- HTTP
 
 
-register : TrimmedForm -> Http.Request Viewer
+register : TrimmedForm -> Cmd Msg
 register (Trimmed form) =
     let
         user =
@@ -314,4 +310,4 @@ register (Trimmed form) =
             Encode.object [ ( "user", user ) ]
                 |> Http.jsonBody
     in
-    Api.register body Viewer.decoder
+    Api.register body CompletedRegister

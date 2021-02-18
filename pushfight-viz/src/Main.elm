@@ -5,11 +5,11 @@ import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
-import Page exposing (Page)
 import Page.Home as Home
 import Page.Login as Login
 import Page.NotFound as NotFound
 import Page.Register as Register
+import Page.Blank as Blank
 import Page.Settings as Settings
 import Route exposing (Route)
 import Session exposing (Session)
@@ -17,7 +17,6 @@ import Task
 import Time
 import Url exposing (Url)
 import Username exposing (Username)
-import Viewer exposing (Viewer)
 
 
 
@@ -41,10 +40,10 @@ type Model
 -- MODEL
 
 
-init : Maybe Viewer -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init maybeViewer url navKey =
+init : Maybe Cred -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init maybeCred url navKey =
     changeRouteTo (Route.fromUrl url)
-        (Redirect (Session.fromViewer navKey maybeViewer))
+        (Redirect (Session.fromCred navKey maybeCred))
 
 
 
@@ -54,36 +53,33 @@ init maybeViewer url navKey =
 view : Model -> Document Msg
 view model =
     let
-        viewer =
-            Session.viewer (toSession model)
-
-        viewPage page toMsg config =
+        viewPage toMsg config =
             let
-                { title, body } =
-                    Page.view viewer page config
+                { title, content } = config
             in
-            { title = title
-            , body = List.map (Html.map toMsg) body
-            }
+                { title = title
+                , body = [Html.map toMsg content]
+                }
+            --Html.map toMsg content
     in
     case model of
         Redirect _ ->
-            Page.view viewer Page.Other Blank.view
+            viewPage (\()->NoOp) Blank.view
 
         NotFound _ ->
-            Page.view viewer Page.Other NotFound.view
+            viewPage (\()->NoOp) NotFound.view
 
         Settings settings ->
-            viewPage Page.Other GotSettingsMsg (Settings.view settings)
+            viewPage GotSettingsMsg (Settings.view settings)
 
         Home home ->
-            viewPage Page.Home GotHomeMsg (Home.view home)
+            viewPage GotHomeMsg (Home.view home)
 
         Login login ->
-            viewPage Page.Other GotLoginMsg (Login.view login)
+            viewPage GotLoginMsg (Login.view login)
 
         Register register ->
-            viewPage Page.Other GotRegisterMsg (Register.view register)
+            viewPage GotRegisterMsg (Register.view register)
 
 
 
@@ -98,6 +94,7 @@ type Msg
     | GotLoginMsg Login.Msg
     | GotRegisterMsg Register.Msg
     | GotSession Session
+    | NoOp
 
 
 toSession : Model -> Session
@@ -247,16 +244,7 @@ subscriptions model =
 
 main : Program Value Model Msg
 main =
-    Browser.application
-        { init = init
-        , onUrlChange = ChangedUrl
-        , onUrlRequest = ClickedLink
-        , subscriptions = subscriptions
-        , update = update
-        , view = view
-        }
-
-    --Api.application Viewer.decoder
+    --Browser.application
     --    { init = init
     --    , onUrlChange = ChangedUrl
     --    , onUrlRequest = ClickedLink
@@ -264,3 +252,12 @@ main =
     --    , update = update
     --    , view = view
     --    }
+
+    Api.application
+        { init = init
+        , onUrlChange = ChangedUrl
+        , onUrlRequest = ClickedLink
+        , subscriptions = subscriptions
+        , update = update
+        , view = view
+        }
