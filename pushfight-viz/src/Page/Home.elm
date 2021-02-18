@@ -19,7 +19,7 @@ import Task exposing (Task)
 import Time
 import Url.Builder
 import Username exposing (Username)
-
+import Route
 
 
 -- MODEL
@@ -45,7 +45,11 @@ init session =
 view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Home"
-    , content = div [] [text "Welcome To Pushfight"]
+    , content = div []
+        [ div [] [text "Welcome To Pushfight"]
+        , div [] [ a [ Route.href Route.Login ] [ text "Login"] ]
+        , div [] [ a [ Route.href Route.Register ] [ text "Register"] ]
+        ]
     }
 
 
