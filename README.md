@@ -5,10 +5,17 @@ Back-end server code for a push fight game API. This will be a REST API unless I
 ## Endpoints
 All endpoints return JSON data unless explicitly noted otherwise.
 
+POST /1/register
+  * Create a specific user account
+  * Body: {email: "a.valid.email@domain.com", user: `<uuid>`, password: "secret"}
+  * Returns: {username: `<uuid>`, token: "newsecret"}
+  * Errors: 404 if username or email already in use
+
 POST /1/login
   * Login to a specific user account
   * Body: {user: `<uuid>`, password: "secret"}
-  * Returns: 200 + a cookie
+  * Returns: {username: `<uuid>`, token: "newsecret"}
+  * Errors: 404 if user not found
 
 GET /1/opengames
   * Get a list of available games to join
@@ -103,3 +110,25 @@ A time status is either `null` or
   "black_time_remaining": `<int>`,
   "additional_time_per_turn": `<int>`
 }
+
+
+## Running
+
+### Install elm & dependencies
+First install [elm](https://guide.elm-lang.org/install/elm.html)
+```
+elm install NoRedInk/elm-json-decode-pipeline
+elm install elm/browser
+elm install elm/core
+elm install elm/html
+elm install elm/http
+elm install elm/json
+elm install elm/time
+elm install elm/url
+elm install truqu/elm-base64
+```
+
+## Locally
+```
+make run
+```
