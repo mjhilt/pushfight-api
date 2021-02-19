@@ -1,3 +1,4 @@
+import os
 import sys
 import random
 import base64
@@ -265,6 +266,16 @@ def post_move():
     body = b.request
     raise NotImplementedError
 
+
+DIRNAME = os.path.dirname(os.path.realpath(__file__))
+
+@b.route('/<filepath:path>')
+def server_static(filepath):
+    return b.static_file(filepath, root=os.path.join(DIRNAME, 'deploy/'))
+
+@b.route('/')
+def server_static(filepath="index.html"):
+    return b.static_file(filepath, root=os.path.join(DIRNAME, 'deploy/'))
 
 if __name__ == '__main__':
     b.run(host='localhost', port=8080)
