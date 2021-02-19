@@ -27,12 +27,16 @@ import Route
 
 type alias Model =
     { session : Session
+    , myGames : List String
+    , openGames : List String
     }
 
 
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
+      , myGames = []
+      , openGames = []
       }
     , Cmd.none
     )
@@ -44,14 +48,19 @@ init session =
 
 view : Model -> { title : String, content : Html Msg }
 view model =
-    { title = "Home"
-    , content = div []
-        [ div [] [text "Welcome To Pushfight"]
-        , div [] [ a [ Route.href Route.Login ] [ text "Login"] ]
-        , div [] [ a [ Route.href Route.Register ] [ text "Register"] ]
-        ]
-    }
-
+    case Session.cred model.session of
+        Nothing ->
+            { title = "Sign In Or Register"
+            , content = div []
+                [ div [] [text "Welcome To Pushfight"]
+                , div [] [ a [ Route.href Route.Login ] [ text "Login"] ]
+                , div [] [ a [ Route.href Route.Register ] [ text "Register"] ]
+                ]
+            }
+        Just _ ->
+            { title = "Lobby"
+            , content = div [] [text "Let's play some pushfight!"]
+            }
 
 -- UPDATE
 

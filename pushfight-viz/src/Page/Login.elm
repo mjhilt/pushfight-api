@@ -14,6 +14,7 @@ import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
+import Base64
 
 
 
@@ -284,15 +285,13 @@ trimFields form =
 login : TrimmedForm -> Cmd Msg
 login (Trimmed form) =
     let
-        user =
-            Encode.object
-                [ ( "email", Encode.string form.email )
-                , ( "password", Encode.string form.password )
-                ]
-
         body =
-            Encode.object [ ( "user", user ) ]
-                |> Http.jsonBody
+            Encode.object
+                [ ( "user", Encode.string form.email )
+                , ( "password", Encode.string (Base64.encode form.password) )
+                ]
+            |> Http.jsonBody
+
     in
     Api.login body CompletedLogin
 

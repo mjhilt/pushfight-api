@@ -117,13 +117,11 @@ storeCred (Cred uname token) =
     let
         json =
             Encode.object
-                [ ( "user"
-                  , Encode.object
-                        [ ( "username", Username.encode uname )
-                        , ( "token", Encode.string token )
-                        ]
-                  )
+                [ ( "username", Username.encode uname )
+                , ( "token", Encode.string token )
                 ]
+
+
     in
     storeCache (Just json)
 
