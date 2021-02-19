@@ -1,4 +1,4 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, credDecoder, register, application)
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, credDecoder, register, application, decodeErrors)
 
 {-| This module is responsible for communicating to the Conduit API.
 It exposes an opaque Endpoint type which is guaranteed to point to the correct URL.
@@ -42,6 +42,8 @@ username (Cred val _) =
 credHeader : Cred -> Http.Header
 credHeader (Cred _ str) =
     Http.header "authorization" ("Token " ++ str)
+
+
 
 
 {-| It's important that this is never exposed!
@@ -213,24 +215,19 @@ addServerError list =
     "Server error" :: list
 
 
---{-| Many API endpoints include an "errors" field in their BadStatus responses.
----}
---decodeErrors : Http.Error -> List String
---decodeErrors error =
---    case error of
---        Http.BadStatus response ->
---            response.body
---                |> decodeString (field "errors" errorsDecoder)
---                |> Result.withDefault [ "Server error" ]
-
---        err ->
---            [ "Server error" ]
-
-
---errorsDecoder : Decoder (List String)
---errorsDecoder =
---    Decode.keyValuePairs (Decode.list Decode.string)
---        |> Decode.map (List.concatMap fromPair)
+decodeErrors : Http.Error -> List String
+decodeErrors error =
+    case error of
+        Http.BadUrl s ->
+            ["Bad URL " ++ s]
+        Http.Timeout ->
+            ["Connection timed out"]
+        Http.NetworkError ->
+            ["Network Error"]
+        Http.BadStatus code ->
+            ["Server Returned Code: " ++ (String.fromInt code)]
+        Http.BadBody s ->
+            ["Bad Body " ++ s]
 
 
 fromPair : ( String, List String ) -> List String
