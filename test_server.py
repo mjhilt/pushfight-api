@@ -5,7 +5,10 @@ from utils import b64encode
 
 from boddle import boddle
 
+token = None
+
 def test_login():
+    global token
     with boddle(json={'user': "TeaUponTweed@gmail.com"}):
         # print(b.request.json)
         try:
@@ -22,8 +25,20 @@ def test_login():
             assert e.status_code == 403
 
     with boddle(json={'user': "TeaUponTweed@gmail.com", 'password': b64encode("salted:hashed_password")}):
-        server.login()
-        # TODO can't figure out how to inspect cookies, I'm sure it's fine
+        res = server.login()
+        assert res.get('username') == "TeaUponTweed@gmail.com"
+        assert 'token' in res
+        token = res['token']
+
+def test_check_user():
+    global token
+    with boddle(headers={"Authorization": "Basic " + b64encode("a"+":"+"c")}):
+        res = server.check_user()
+        assert res.status_code == 401
+
+    with boddle(headers={"Authorization": "Basic " + b64encode("TeaUponTweed@gmail.com"+":"+token)}):
+        res = server.check_user()
+        assert res.body == "TeaUponTweed@gmail.com"
 
 
 def test_opengames():
@@ -46,4 +61,6 @@ def test_move():
 
 
 if __name__ == '__main__':
+    server.load_session_key()
     test_login()
+    test_check_user()
