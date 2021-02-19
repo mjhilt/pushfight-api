@@ -3,6 +3,8 @@ import sys
 import random
 import base64
 import time
+import json
+from cryptography.fernet import Fernet, InvalidToken
 
 import bottle as b
 # from bottle import route, run, template
@@ -13,7 +15,7 @@ from utils import hash_pw, check_pw
 
 games = {}
 users = {}
-session_key = 'a super secret string we should read from some file'
+session_key = None
 
 def init_board():
     return EXAMPLE_BOARD
@@ -27,9 +29,16 @@ def check_cred(user, password):
     return False
 
 
-def _auth_check(user, password):
-    return check_cred(user, base64.b64decode(bytes(password, 'utf8')))
-
+def _auth_check(user, token):
+    try:
+        b = session_key.decrypt(bytes(token, 'utf8'))
+    except InvalidToken:
+        return False
+    try:
+        info = json.loads(str(b, 'utf8'))
+    except:
+        return False
+    return user == info.get('user') and info.get('expires') > time.time()
 
 def new_anonymous_user():
     for i in range(10000):
@@ -87,8 +96,13 @@ def login():
     if not is_valid_user:
         b.abort(403, "Login not correct")
 
-    # TODO we should mint a token instead of passing the plaintext password back and forth...
-    return {"username": user, "token": password}
+    now = time.time()
+    token_info = {
+        "user": user,
+        "expires": now + 3600,
+    }
+    token_bytes = session_key.encrypt(bytes(json.dumps(token_info), 'utf8'))
+    return {"username": user, "token": str(token_bytes, 'utf8')}
 
 
 @b.post('/1/checkuser')
@@ -281,5 +295,19 @@ def server_static(filepath):
 def server_static(filepath="index.html"):
     return b.static_file(filepath, root=os.path.join(DIRNAME, 'deploy/'))
 
+
+def load_session_key(filename='secret_api_key'):
+    global session_key
+    with open(filename,'rb') as f:
+        session_key = Fernet(f.read())
+
+
 if __name__ == '__main__':
+    if not os.path.exists('secret_api_key'):
+        print('Generating a new api key')
+        key = Fernet.generate_key()
+        with open('secret_api_key','wb') as f:
+            f.write(key)
+
+    load_session_key()
     b.run(host='localhost', port=8080)
