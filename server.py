@@ -88,7 +88,7 @@ def login():
         b.abort(403, "Login not correct")
 
     # TODO we should mint a token instead of passing the plaintext password back and forth...
-    return {"user": user, "password": password}
+    return {"username": user, "token": password}
 
 
 @b.post('/1/checkuser')
