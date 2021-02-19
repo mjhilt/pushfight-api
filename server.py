@@ -27,6 +27,10 @@ def check_cred(user, password):
     return False
 
 
+def _auth_check(user, password):
+    return check_cred(user, base64.b64decode(bytes(password, 'utf8')))
+
+
 def new_anonymous_user():
     for i in range(10000):
         if i not in users:
@@ -83,18 +87,18 @@ def login():
     if not is_valid_user:
         b.abort(403, "Login not correct")
 
-    b.response.set_cookie("user", user, secret=session_key)
-    return
+    # TODO we should mint a token instead of passing the plaintext password back and forth...
+    return {"user": user, "password": password}
 
 
 @b.post('/1/checkuser')
+@b.auth_basic(_auth_check)
 def check_user():
-    # Testing endpoint for the cookie
-    user = b.request.get_cookie("user", secret=session_key)
+    user,_ = b.request.auth
     if user:
         return b.Response(user)
     else:
-        b.abort(401, "Bad cookie")
+        b.abort(401, "Bad auth")
 
 
 @b.get('/1/opengames')

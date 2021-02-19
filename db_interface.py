@@ -51,6 +51,11 @@ class TestDB(Base):
             "name": "Dad-bod",
             "password": b'$2b$12$ziwcNkz2FOh3WwBrlbm4P.jDlsFl81alu/Wsj5fyz1u0eM4jaZfky'
         },
+        3: {"_id": 3,
+            "email": "a",
+            "name": "b",
+            "password": hash_pw("c")
+        },
     }
 
     GAMES = {

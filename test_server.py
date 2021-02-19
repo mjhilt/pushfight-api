@@ -25,6 +25,15 @@ def test_login():
         server.login()
         # TODO can't figure out how to inspect cookies, I'm sure it's fine
 
+def test_check_user():
+    with boddle(headers={"Authorization": "Basic " + b64encode("a"+":"+b64encode("c"))}):
+        res = server.check_user()
+        assert res.body == "a"
+
+    with boddle(headers={"Authorization": "Basic " + b64encode("a"+":"+b64encode("badpw"))}):
+        res = server.check_user()
+        assert res.body == "a"
+
 
 def test_opengames():
     pass
@@ -47,3 +56,4 @@ def test_move():
 
 if __name__ == '__main__':
     test_login()
+    test_check_user()
