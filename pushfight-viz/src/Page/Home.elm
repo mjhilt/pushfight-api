@@ -7,7 +7,10 @@ import Api exposing (Cred)
 import Api.Endpoint as Endpoint
 import Browser.Dom as Dom
 import Html exposing (..)
-import Html.Attributes exposing (attribute, class, classList, href, id, placeholder)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
+
+--import Html.Attributes exposing (attribute, class, classList, href, id, placeholder)
 import Html.Events exposing (onClick)
 import Http
 --import Loading
@@ -29,7 +32,27 @@ type alias Model =
     { session : Session
     , myGames : List String
     , openGames : List String
+    , newGameData : NewGameData
     }
+
+
+type Side
+    = White
+    | Black
+    | Random
+
+--type alias ChallengeData =
+--    { oponent : String
+--    , side: Side
+--    , timed: Bool
+--    }
+
+type alias NewGameData =
+    { side: Side
+    , timed: Bool
+    , opponent: String
+    }
+
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -37,6 +60,7 @@ init session =
     ( { session = session
       , myGames = []
       , openGames = []
+      , newGameData = {side = Random, timed = False, opponent = ""}
       }
     , Cmd.none
     )
@@ -59,20 +83,80 @@ view model =
             }
         Just _ ->
             { title = "Lobby"
-            , content = div [] [text "Let's play some pushfight!"]
+            , content = div []
+                [ div [] [text "Let's play some pushfight!"]
+                , div [] [ fieldset []
+                    [ button [onClick RequestNewGame] [text "Start New Game"]
+                    , checkbox ToggleTimed "Timed Game"
+                    , radiobutton "Random" (ChangeSide Random) (model.newGameData.side == Random)
+                    , radiobutton "White" (ChangeSide White) (model.newGameData.side == White)
+                    , radiobutton "Black" (ChangeSide Black) (model.newGameData.side == Black)
+                    --, div [style "padding" "20px"] []
+                    , input [ placeholder "Opponent (optional)", value model.newGameData.opponent, onInput UpdateOpponent] []
+                    ]
+                ]
+                , div [] [button [onClick LogOut] [text "Log Out"] ]
+                ]
             }
+
+checkbox : msg -> String -> Html msg
+checkbox msg name =
+    label
+        [ style "padding" "20px" ]
+        [ input [ type_ "checkbox", onClick msg ] []
+        , text name
+        ]
+
+radiobutton : String -> msg -> Bool -> Html msg
+radiobutton value msg sel =
+    label []
+        [ input
+            [ type_ "radio"
+            , name "value"
+            --, style "padding-right" "20px"
+            , onClick msg
+            , checked sel
+            ] []
+        , text value
+        ]
 
 -- UPDATE
 
-
 type Msg
-    = NoOp
+    = LogOut
+    | RequestNewGame
+    | ChangeSide Side
+    | ToggleTimed
+    | UpdateOpponent String
+    | JoinGame String
     | GotSession Session
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
+        LogOut ->
+            (model, Api.logout )
+        ChangeSide side ->
+            let
+                gameData = model.newGameData
+                newGameData = {gameData | side = side}
+            in
+                ( { model | newGameData = newGameData }, Cmd.none)
+        ToggleTimed  ->
+            let
+                gameData = model.newGameData
+                newGameData = {gameData | timed = not gameData.timed}
+            in
+                ( { model | newGameData = newGameData }, Cmd.none)
+        UpdateOpponent opponent ->
+            let
+                gameData = model.newGameData
+                newGameData = {gameData | opponent = opponent}
+            in
+                ( { model | newGameData = newGameData }, Cmd.none)
+        RequestNewGame ->
+            (model, Cmd.none)
+        JoinGame gameID ->
             (model, Cmd.none)
         GotSession session ->
             ({model | session = session}, Cmd.none)
