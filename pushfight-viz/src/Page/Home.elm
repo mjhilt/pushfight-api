@@ -3,7 +3,7 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
-import Api exposing (Cred, GameChallenge, Side(..))
+import Api exposing (Cred, GameChallenge, Color(..))
 import Api.Endpoint as Endpoint
 import Browser.Dom as Dom
 import Html exposing (..)
@@ -42,7 +42,7 @@ init session =
     ( { session = session
       , myGames = []
       , openGames = []
-      , newGameData = {side = Random, timed = False, opponent = ""}
+      , newGameData = {color = Nothing, timed = False, opponent = ""}
       }
     , Cmd.none
     )
@@ -70,9 +70,9 @@ view model =
                 , div [] [ fieldset []
                     [ button [onClick RequestNewGame] [text "Start New Game"]
                     , checkbox ToggleTimed "Timed Game"
-                    , radiobutton "Random" (ChangeSide Random) (model.newGameData.side == Random)
-                    , radiobutton "White" (ChangeSide White) (model.newGameData.side == White)
-                    , radiobutton "Black" (ChangeSide Black) (model.newGameData.side == Black)
+                    , radiobutton "Random" (ChangeSide Nothing) (model.newGameData.color == Nothing)
+                    , radiobutton "White" (ChangeSide (Just White)) (model.newGameData.color == Just White)
+                    , radiobutton "Black" (ChangeSide (Just Black)) (model.newGameData.color == Just Black)
                     --, div [style "padding" "20px"] []
                     , input [ placeholder "Opponent (optional)", value model.newGameData.opponent, onInput UpdateOpponent] []
                     ]
@@ -107,7 +107,7 @@ radiobutton value msg sel =
 type Msg
     = LogOut
     | RequestNewGame
-    | ChangeSide Side
+    | ChangeSide (Maybe Color)
     | ToggleTimed
     | UpdateOpponent String
     | JoinGame String
@@ -118,10 +118,10 @@ update msg model =
     case msg of
         LogOut ->
             (model, Api.logout )
-        ChangeSide side ->
+        ChangeSide color ->
             let
                 gameData = model.newGameData
-                newGameData = {gameData | side = side}
+                newGameData = {gameData | color = color}
             in
                 ( { model | newGameData = newGameData }, Cmd.none)
         ToggleTimed  ->

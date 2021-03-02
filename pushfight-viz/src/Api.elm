@@ -1,4 +1,4 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Side(..))
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Color(..))
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
@@ -123,20 +123,19 @@ mygamesDecoder: Decoder (List String)
 mygamesDecoder =
     field "games" (Decode.list string)
 
--- challenge
+-- challenge (starts a game)
 
-type Side
+type Color
     = White
     | Black
-    | Random
 
 type alias GameChallenge =
-    { side: Side
+    { color: Maybe Color
     , timed: Bool
     , opponent: String
     }
 
-challenge: GameChallenge -> (Result Http.Error String -> msg) -> Cred -> Cmd msg
+challenge: GameChallenge -> (Result Http.Error Game -> msg) -> Cred -> Cmd msg
 challenge gc msg cred =
     let
         body = gc |> encodeChallenge |> Http.jsonBody
@@ -148,12 +147,12 @@ encodeChallenge: GameChallenge -> Encode.Value
 encodeChallenge gc =
     let
         color =
-            case gc.side of
-                White ->
+            case gc.color of
+                Just White ->
                     "white"
-                Black ->
+                Just Black ->
                     "black"
-                Random ->
+                Nothing ->
                     "random"
     in
         Encode.object
@@ -162,10 +161,65 @@ encodeChallenge gc =
             , ("timed", Encode.bool gc.timed)
             ]
 
+-- start game
+
+type alias Game =
+    { color: Color
+    , gameId: String
+    }
+
+start: GameChallenge -> (Result Http.Error Game -> msg) -> Cred -> Cmd msg
+start gc msg cred =
+    let
+        body = gc |> encodeGameStart |> Http.jsonBody
+    in
+        post Endpoint.gameStart body (Just cred) (Http.expectJson msg gameDecoder)
+
+
+encodeGameStart: GameChallenge -> Encode.Value
+encodeGameStart gc =
+    let
+        color =
+            case gc.color of
+                Just White ->
+                    "white"
+                Just Black ->
+                    "black"
+                Nothing ->
+                    "random"
+    in
+        Encode.object
+            [ ("color", Encode.string color)
+            , ("timed", Encode.bool gc.timed)
+            ]
+
+
 -- TODO actually decode pushfight & timer state
-gameDecoder: Decoder String
+gameDecoder: Decoder Game
 gameDecoder =
-    field "game" string
+    Decode.map2 Game
+        (field "color" (Decode.map parseColor string))
+        (field "game" string)
+
+parseColor: String -> Color
+parseColor color =
+    case color of
+        "white" ->
+            White
+        "black" ->
+            Black
+        _ ->
+            White
+
+-- join game
+
+join: String -> (Result Http.Error Game -> msg) -> Cred -> Cmd msg
+join gid msg cred =
+    let
+        body = Encode.object [("game", Encode.string gid)] |> Http.jsonBody
+    in
+        post Endpoint.gameJoin body (Just cred) (Http.expectJson msg gameDecoder)
+
 
 -- PERSISTENCE
 
@@ -240,32 +294,11 @@ application config =
         }
 
 
---storageDecoder : Decoder (Cred -> viewer) -> Decoder viewer
---storageDecoder viewerDecoder =
---    Decode.field "user" (decoderFromCred viewerDecoder)
-
-
---login : Http.Body -> Decoder (Cred -> a) -> Cmd a
---login body decoder =
---    post Endpoint.login Nothing body (Decode.field "user" (decoderFromCred decoder))
-
-
---register : Http.Body -> Decoder (Cred -> a) -> Cmd a
---register body decoder =
---    post Endpoint.users Nothing body (Decode.field "user" (decoderFromCred decoder))
-
-
---settings : Cred -> Http.Body -> Decoder (Cred -> a) -> Cmd a
---settings cred body decoder =
---    post Endpoint.user cred body (Decode.field "user" (decoderFromCred decoder))
-
-
 decoderFromCred : Decoder (Cred -> a) -> Decoder a
 decoderFromCred decoder =
     Decode.map2 (\fromCred cred -> fromCred cred)
         decoder
         credDecoder
-
 
 
 -- ERRORS
