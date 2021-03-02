@@ -203,7 +203,7 @@ def start_impl(opponent=None):
     db.put('games', '_id', game)
     return {
         "game": game['_id'],
-        "state": None, # TODO
+        "state": game.state,
         "color": color,
         "timer": None, # TODO
     }
@@ -270,8 +270,10 @@ def post_game_join():
     game.join(user)
 
     return {
+        "game": game['_id'],
         "state": game.state,
         "color": game.color[user],
+        "timer": None, # TODO
     }
 
 
