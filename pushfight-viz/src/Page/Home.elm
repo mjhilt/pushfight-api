@@ -3,7 +3,7 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
-import Api exposing (Cred)
+import Api exposing (Cred, GameChallenge, Side(..))
 import Api.Endpoint as Endpoint
 import Browser.Dom as Dom
 import Html exposing (..)
@@ -32,25 +32,7 @@ type alias Model =
     { session : Session
     , myGames : List String
     , openGames : List String
-    , newGameData : NewGameData
-    }
-
-
-type Side
-    = White
-    | Black
-    | Random
-
---type alias ChallengeData =
---    { oponent : String
---    , side: Side
---    , timed: Bool
---    }
-
-type alias NewGameData =
-    { side: Side
-    , timed: Bool
-    , opponent: String
+    , newGameData : GameChallenge
     }
 
 

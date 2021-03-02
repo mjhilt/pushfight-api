@@ -1,17 +1,14 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, credDecoder, register, application, decodeErrors)
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Side(..))
 
-{-| This module is responsible for communicating to the Conduit API.
-It exposes an opaque Endpoint type which is guaranteed to point to the correct URL.
--}
-
-import Api.Endpoint as Endpoint exposing (Endpoint, get, post)
+import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
 import Browser
 import Browser.Navigation as Nav
 import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
-import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 import Json.Encode as Encode
+import Json.Decode.Pipeline as Pipeline exposing (optional, required)
+--import Json.Encode as Encode exposing (Encoder)
 import Url exposing (Url)
 import Username exposing (Username)
 
@@ -19,17 +16,6 @@ import Username exposing (Username)
 
 -- CRED
 
-
-{-| The authentication credentials for the Viewer (that is, the currently logged-in user.)
-This includes:
-  - The cred's Username
-  - The cred's authentication token
-By design, there is no way to access the token directly as a String.
-It can be encoded for persistence, and it can be added to a header
-to a HttpBuilder for a request, but that's it.
-This token should never be rendered to the end user, and with this API, it
-can't be!
--}
 type Cred
     = Cred Username String
 
@@ -44,6 +30,144 @@ credHeader (Cred _ str) =
     Http.header "authorization" ("Token " ++ str)
 
 
+get: Endpoint -> Http.Body -> Maybe Cred -> Http.Expect msg -> Cmd msg
+get e body cred expect =
+    let
+        headers =
+            case cred of
+                Just c ->
+                    [credHeader c]
+                Nothing ->
+                    []
+    in
+        Http.request
+            { method = "GET"
+            , headers = headers
+            , url = Endpoint.unwrap e
+            , expect = expect
+            , body = body
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+
+
+post: Endpoint -> Http.Body -> Maybe Cred -> Http.Expect msg -> Cmd msg
+post e body cred expect =
+    let
+        headers =
+            case cred of
+                Just c ->
+                    [credHeader c]
+                Nothing ->
+                    []
+    in
+        Http.request
+            { method = "POST"
+            , headers = headers
+            , url = Endpoint.unwrap e
+            , expect = expect
+            , body = body
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+
+-- API
+
+-- logout
+
+logout : Cmd msg
+logout =
+    storeCache Nothing
+
+-- login
+
+login : Http.Body -> ((Result Http.Error Cred) -> msg) -> Cmd msg
+login body msg =
+    post Endpoint.login body Nothing (Http.expectJson msg credDecoder)
+
+-- register
+
+register : Http.Body -> ((Result Http.Error Cred) -> msg) -> Cmd msg
+register body msg =
+    post Endpoint.register body Nothing (Http.expectJson msg credDecoder)
+
+-- opengame
+
+type alias OpenGame =
+    { gameId: String
+    , opponent: String
+    }
+
+opengames: (Result Http.Error (List OpenGame) -> msg) -> Cmd msg
+opengames msg =
+    get Endpoint.opengames Http.emptyBody Nothing (Http.expectJson msg opengamesDecoder)
+
+opengamesDecoderHelper: Decoder OpenGame
+opengamesDecoderHelper =
+    Decode.map2 OpenGame
+        (field "game" string)
+        (field "opponent" string)
+
+opengamesDecoder: Decoder (List OpenGame)
+opengamesDecoder =
+    field "games" (Decode.list opengamesDecoderHelper)
+
+-- mygames
+
+mygames: (Result Http.Error (List String) -> msg) -> Cred -> Cmd msg
+mygames msg cred =
+    get Endpoint.mygames Http.emptyBody (Just cred) (Http.expectJson msg mygamesDecoder)
+
+
+mygamesDecoder: Decoder (List String)
+mygamesDecoder =
+    field "games" (Decode.list string)
+
+-- challenge
+
+type Side
+    = White
+    | Black
+    | Random
+
+type alias GameChallenge =
+    { side: Side
+    , timed: Bool
+    , opponent: String
+    }
+
+challenge: GameChallenge -> (Result Http.Error String -> msg) -> Cred -> Cmd msg
+challenge gc msg cred =
+    let
+        body = gc |> encodeChallenge |> Http.jsonBody
+    in
+        post Endpoint.gameChallenge body (Just cred) (Http.expectJson msg gameDecoder)
+
+
+encodeChallenge: GameChallenge -> Encode.Value
+encodeChallenge gc =
+    let
+        color =
+            case gc.side of
+                White ->
+                    "white"
+                Black ->
+                    "black"
+                Random ->
+                    "random"
+    in
+        Encode.object
+            [ ("color", Encode.string color)
+            , ("opponent", Encode.string gc.opponent)
+            , ("timed", Encode.bool gc.timed)
+            ]
+
+-- TODO actually decode pushfight & timer state
+gameDecoder: Decoder String
+gameDecoder =
+    field "game" string
+
+-- PERSISTENCE
 
 
 {-| It's important that this is never exposed!
@@ -59,17 +183,6 @@ credDecoder =
 
 
 
--- PERSISTENCE
-
-
---decode : Decoder (Cred -> a) -> Value -> Result Decode.Error a
---decode decoder value =
---    -- It's stored in localStorage as a JSON String;
---    -- first decode the Value as a String, then
---    -- decode that String as JSON.
---    Decode.decodeValue Decode.string value
---        |> Result.andThen (\str -> Decode.decodeString (Decode.field "user" (decoderFromCred decoder)) str)
-
 
 port onStoreChange : (Value -> msg) -> Sub msg
 
@@ -77,42 +190,9 @@ port onStoreChange : (Value -> msg) -> Sub msg
 credChanges : (Maybe Cred -> msg) -> Sub msg
 credChanges toMsg =
     onStoreChange (\value -> toMsg (Decode.decodeValue credDecoder value |> Result.toMaybe ) )
---viewerChanges : (Maybe Cred -> msg) -> Decoder Cred -> Sub msg
---viewerChanges toMsg decoder =
---    --onStoreChange
---    onStoreChange (\value -> toMsg (decodeFromChange decoder value))
 
 
---decodeFromChange : Decoder (Cred -> viewer) -> Value -> Maybe viewer
---decodeFromChange viewerDecoder val =
---    -- It's stored in localStorage as a JSON String;
---    -- first decode the Value as a String, then
---    -- decode that String as JSON.
---    Decode.decodeValue (storageDecoder viewerDecoder) val
---        |> Result.toMaybe
-
---decoderFromCred : Decoder (Cred -> a) -> Decoder a
---decoderFromCred decoder =
---    Decode.map2 (\fromCred cred -> fromCred cred)
---        decoder
---        credDecoder
-
---decodeString : Decoder a -> Value -> Result Decode.Error a
---decodeString decoder value =
---    -- It's stored in localStorage as a JSON String;
---    -- first decode the Value as a String, then
---    -- decode that String as JSON.
---    Decode.decodeValue Decode.string value
---        |> Result.andThen (\str -> Decode.decodeString decoder str)
-
-
---decodeString : Decoder a -> (Decoder String)
---decodeString decoder =
---    -- It's stored in localStorage as a JSON String;
---    -- first decode the Value as a String, then
---    -- decode that String as JSON.
---    Decode.decodeValue Decode.string value
---        |> Result.andThen (\str
+port storeCache : Maybe Value -> Cmd msg
 
 storeCred : Cred -> Cmd msg
 storeCred (Cred uname token) =
@@ -128,26 +208,7 @@ storeCred (Cred uname token) =
     storeCache (Just json)
 
 
-logout : Cmd msg
-logout =
-    storeCache Nothing
-
-
-login : Http.Body -> ((Result Http.Error Cred) -> msg) -> Cmd msg
-login body msg =
-    post Endpoint.login body (Http.expectJson msg credDecoder)
-
-register : Http.Body -> ((Result Http.Error Cred) -> msg) -> Cmd msg
-register body msg =
-    post Endpoint.register body (Http.expectJson msg credDecoder)
-
-port storeCache : Maybe Value -> Cmd msg
-
-
-
--- SERIALIZATION
 -- APPLICATION
-
 
 application :
         { init : Maybe Cred -> Url -> Nav.Key -> ( model, Cmd msg )

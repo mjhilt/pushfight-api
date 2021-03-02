@@ -1,25 +1,19 @@
-module Api.Endpoint exposing (Endpoint, get, post, unwrap, login, opengames, mygames, gameChallenge, gameStart, gameJoin, gameStatus, move, register)
+module Api.Endpoint exposing (Endpoint, unwrap, login, opengames, mygames, gameChallenge, gameStart, gameJoin, gameStatus, move, register)
 import Http
 
 
 import Url.Builder exposing (QueryParameter)
 import Username exposing (Username)
 
-get: Endpoint -> Http.Expect msg -> Cmd msg
-get e expect =
-    Http.get
-        { url = unwrap e
-        , expect = expect
-        }
-
-
-post: Endpoint -> Http.Body -> Http.Expect msg -> Cmd msg
-post e body expect =
-    Http.post
-        { url = unwrap e
-        , body = body
-        , expect = expect
-        }
+--request :
+--    { method : String
+--    , headers : List Header
+--    , url : String
+--    , body : Body
+--    , expect : Expect msg
+--    , timeout : Maybe Float
+--    , tracker : Maybe String
+--    }
 
 
 -- TYPES
@@ -60,9 +54,9 @@ opengames : Endpoint -- GET
 opengames = 
     url ["opengames"] []
 
-mygames : Int -> Endpoint -- GET
-mygames uuid = 
-    url ["mygames"] [Url.Builder.int "user" uuid]
+mygames : Endpoint -- GET
+mygames = 
+    url ["mygames"] []
 
 gameChallenge : Endpoint -- POST
 gameChallenge = 
