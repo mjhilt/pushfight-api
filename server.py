@@ -130,12 +130,10 @@ def get_open_games():
 
 
 @b.get('/1/mygames')
+@b.auth_basic(_auth_check)
 def get_my_games():
     # Returns: {games: [`<uuid>`, ...]}
-    user = request.query.user
-    if user != b.request.get_cookie("user", secret=session_key):
-        b.abort(401, "Bad cookie")
-
+    user,_ = b.request.auth
     games = []
     for key in ("white_player", "black_player"):
         games += [g["_id"] for g in db.find("games", user, key=key)]
@@ -156,6 +154,7 @@ def make_game(user1, user2, color='white', timed=False):
 
 
 @b.post('1/game/challenge')
+@b.auth_basic(_auth_check)
 def post_challenge():
     opponent = None
     for rec in db.find('users', body.opponent, key='email'):
@@ -173,20 +172,27 @@ def post_start():
 
 def start_impl(opponent=None):
     body = b.request
-    username = body.user
-    if username != b.request.get_cookie("user", secret=session_key):
-        b.abort(401, "Bad cookie")
+    # username = body.user
+    username,_ = b.request.auth
+    # if username != b.request.get_cookie("user", secret=session_key):
+        # b.abort(401, "Bad cookie")
 
     # TODO: This is really dumb that we look up the user to check the cookie
     #       but then look it up again here. We should fix that.
     for rec in db.find('users', username, key='email'):
         user = rec
         break
-
-    try:
+    # color = body.color
+    if "color" not in body or body.color not in ["white", "black"]:
+        color = random.choice(["white", "black"])
+    else:
         color = body.color
-    except KeyError:
-        color = 'white'
+
+    # if color not in
+    # try:
+    #     color = body.color
+    # except KeyError:
+    #     color = 'white'
 
     try:
         timed = body.timed
