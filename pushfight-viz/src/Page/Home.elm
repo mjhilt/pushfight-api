@@ -77,9 +77,29 @@ view model =
                     , input [ placeholder "Opponent (optional)", value model.newGameData.opponent, onInput UpdateOpponent] []
                     ]
                 ]
+                , div [] [button [onClick Refresh] [text "Refresh"] ]
                 , div [] [button [onClick LogOut] [text "Log Out"] ]
                 ]
             }
+
+viewMyGames: List String -> Html Msg
+viewMyGames myGames =
+    List.map viewMyGamesImpl myGames
+    |> div []
+
+
+viewMyGamesImpl: String -> Html Msg
+viewMyGamesImpl gameId =
+    div [] [text gameId, button [onClick (JoinGame gameId)] [text "Go To"]]
+
+viewOpenGames: List String -> Html Msg
+viewOpenGames openGames =
+    List.map viewOpenGamesImpl openGames
+    |> div []
+
+viewOpenGamesImpl: String -> Html Msg
+viewOpenGamesImpl gameId =
+    div [] [text gameId, button [onClick (GoToGame gameId)] [text "Join"]]
 
 checkbox : msg -> String -> Html msg
 checkbox msg name =
@@ -102,6 +122,17 @@ radiobutton value msg sel =
         , text value
         ]
 
+refresh: Maybe Cred -> Cmd Msg
+refresh cred =
+    case cred of
+        Just c ->
+            Cmd.batch
+                [ Api.opengames GotOpenGames
+                , Api.mygames GotMyGames c
+                ]
+        Nothing ->
+            Api.opengames GotOpenGames
+
 -- UPDATE
 
 type Msg
@@ -110,8 +141,12 @@ type Msg
     | ChangeSide (Maybe Color)
     | ToggleTimed
     | UpdateOpponent String
-    | JoinGame String
     | GotSession Session
+    | GotOpenGames (Result Http.Error (List Api.OpenGame))
+    | GotMyGames ((Result Http.Error (List String)))
+    | GoToGame String
+    | JoinGame String
+    | Refresh
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -123,25 +158,40 @@ update msg model =
                 gameData = model.newGameData
                 newGameData = {gameData | color = color}
             in
-                ( { model | newGameData = newGameData }, Cmd.none)
+            ( { model | newGameData = newGameData }, Cmd.none)
         ToggleTimed  ->
             let
                 gameData = model.newGameData
                 newGameData = {gameData | timed = not gameData.timed}
             in
-                ( { model | newGameData = newGameData }, Cmd.none)
+            ( { model | newGameData = newGameData }, Cmd.none)
         UpdateOpponent opponent ->
             let
                 gameData = model.newGameData
                 newGameData = {gameData | opponent = opponent}
             in
-                ( { model | newGameData = newGameData }, Cmd.none)
+            ( { model | newGameData = newGameData }, Cmd.none)
         RequestNewGame ->
-            (model, Cmd.none)
-        JoinGame gameID ->
             (model, Cmd.none)
         GotSession session ->
             ({model | session = session}, Cmd.none)
+        GotOpenGames (Err error) ->
+            (model, Cmd.none)
+        GotOpenGames (Ok opengames) ->
+            let
+                gameIds = List.map (\a -> a.gameId) opengames
+            in
+            ( {model|openGames=gameIds}, Cmd.none)
+        GotMyGames (Err error) ->
+            (model, Cmd.none)
+        GotMyGames (Ok gameIds) ->
+            ( {model|myGames=gameIds}, Cmd.none)
+        GoToGame gameId ->
+            (model, Cmd.none)
+        JoinGame gameId ->
+            (model, Cmd.none)
+        Refresh ->
+            (model, refresh (Session.cred model.session))
 
 -- SUBSCRIPTIONS
 
