@@ -11,6 +11,7 @@ import Page.NotFound as NotFound
 import Page.Register as Register
 import Page.Blank as Blank
 import Page.Settings as Settings
+import Page.PlayingGame as PlayingGame
 import Route exposing (Route)
 import Session exposing (Session)
 import Task
@@ -34,6 +35,7 @@ type Model
     | Settings Settings.Model
     | Login Login.Model
     | Register Register.Model
+    | PlayingGame PlayingGame.Model
 
 
 
@@ -81,6 +83,8 @@ view model =
         Register register ->
             viewPage GotRegisterMsg (Register.view register)
 
+        PlayingGame game ->
+            viewPage GotPlayingGameMsg (PlayingGame.view game)
 
 
 -- UPDATE
@@ -93,6 +97,7 @@ type Msg
     | GotSettingsMsg Settings.Msg
     | GotLoginMsg Login.Msg
     | GotRegisterMsg Register.Msg
+    | GotPlayingGameMsg PlayingGame.Msg
     | GotSession Session
     | NoOp
 
@@ -117,6 +122,9 @@ toSession page =
 
         Register register ->
             Register.toSession register
+
+        PlayingGame game ->
+            PlayingGame.toSession game
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -151,6 +159,9 @@ changeRouteTo maybeRoute model =
             Register.init session
                 |> updateWith Register GotRegisterMsg model
 
+        Just (Route.PlayingGame gameId) ->
+            PlayingGame.init session gameId
+                |> updateWith PlayingGame GotPlayingGameMsg model
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -199,6 +210,10 @@ update msg model =
             Home.update subMsg home
                 |> updateWith Home GotHomeMsg model
 
+        ( GotPlayingGameMsg subMsg, PlayingGame game ) ->
+            PlayingGame.update subMsg game
+                |> updateWith PlayingGame GotPlayingGameMsg model
+
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( model, Cmd.none )
@@ -236,6 +251,8 @@ subscriptions model =
         Register register ->
             Sub.map GotRegisterMsg (Register.subscriptions register)
 
+        PlayingGame game ->
+            Sub.map GotPlayingGameMsg (PlayingGame.subscriptions game)
 
 
 

@@ -1,4 +1,4 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Color(..))
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Color(..), GameInfo, challenge, start)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
@@ -135,7 +135,7 @@ type alias GameChallenge =
     , opponent: String
     }
 
-challenge: GameChallenge -> (Result Http.Error Game -> msg) -> Cred -> Cmd msg
+challenge: GameChallenge -> (Result Http.Error GameInfo -> msg) -> Cred -> Cmd msg
 challenge gc msg cred =
     let
         body = gc |> encodeChallenge |> Http.jsonBody
@@ -163,12 +163,12 @@ encodeChallenge gc =
 
 -- start game
 
-type alias Game =
+type alias GameInfo =
     { color: Color
     , gameId: String
     }
 
-start: GameChallenge -> (Result Http.Error Game -> msg) -> Cred -> Cmd msg
+start: GameChallenge -> (Result Http.Error GameInfo -> msg) -> Cred -> Cmd msg
 start gc msg cred =
     let
         body = gc |> encodeGameStart |> Http.jsonBody
@@ -195,9 +195,9 @@ encodeGameStart gc =
 
 
 -- TODO actually decode pushfight & timer state
-gameDecoder: Decoder Game
+gameDecoder: Decoder GameInfo
 gameDecoder =
-    Decode.map2 Game
+    Decode.map2 GameInfo
         (field "color" (Decode.map parseColor string))
         (field "game" string)
 
@@ -213,7 +213,7 @@ parseColor color =
 
 -- join game
 
-join: String -> (Result Http.Error Game -> msg) -> Cred -> Cmd msg
+join: String -> (Result Http.Error GameInfo -> msg) -> Cred -> Cmd msg
 join gid msg cred =
     let
         body = Encode.object [("game", Encode.string gid)] |> Http.jsonBody

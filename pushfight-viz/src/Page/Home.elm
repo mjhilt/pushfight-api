@@ -33,6 +33,7 @@ type alias Model =
     , myGames : List String
     , openGames : List String
     , newGameData : GameChallenge
+    , problems: List String
     }
 
 
@@ -43,6 +44,7 @@ init session =
       , myGames = []
       , openGames = []
       , newGameData = {color = Nothing, timed = False, opponent = ""}
+      , problems = []
       }
     , Cmd.none
     )
@@ -77,6 +79,7 @@ view model =
                     , input [ placeholder "Opponent (optional)", value model.newGameData.opponent, onInput UpdateOpponent] []
                     ]
                 ]
+                , ul [ class "error-messages" ] (model.problems |> List.map (\s -> li [] [ text s ]))
                 , div [] [button [onClick LogOut] [text "Log Out"] ]
                 ]
             }
@@ -112,6 +115,8 @@ type Msg
     | UpdateOpponent String
     | JoinGame String
     | GotSession Session
+    | GotGameData (Result Http.Error Api.GameInfo)
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -137,11 +142,35 @@ update msg model =
             in
                 ( { model | newGameData = newGameData }, Cmd.none)
         RequestNewGame ->
-            (model, Cmd.none)
+            case Session.cred model.session of
+                Just c ->
+                    let
+                        cmdMsg = 
+                            if String.length model.newGameData.opponent == 0 then
+                                Api.start model.newGameData GotGameData c
+                            else
+                                Api.challenge model.newGameData GotGameData c
+                    in
+                    (model, cmdMsg)
+                Nothing ->
+                    (model, Cmd.none)
         JoinGame gameID ->
             (model, Cmd.none)
+
         GotSession session ->
             ({model | session = session}, Cmd.none)
+
+        GotGameData (Ok game) ->
+            (model, Route.replaceUrl (Session.navKey model.session) (Route.PlayingGame game.gameId ))
+
+        GotGameData (Err error) ->
+            let
+                serverErrors =
+                    Api.decodeErrors error
+            in
+            ( { model | problems = List.append model.problems serverErrors }
+            , Cmd.none
+            )
 
 -- SUBSCRIPTIONS
 

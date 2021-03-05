@@ -5,6 +5,7 @@ import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
+import Url.Parser.Query as Query
 import Username exposing (Username)
 
 
@@ -17,6 +18,7 @@ type Route
     | Root
     | Login
     | Logout
+    | PlayingGame String -- TODO make this a type?
     | Register
     | Settings
 
@@ -29,6 +31,7 @@ parser =
         , Parser.map Logout (s "logout")
         , Parser.map Settings (s "settings")
         , Parser.map Register (s "register")
+        , Parser.map PlayingGame (s "game" </> Parser.string )
         ]
 
 
@@ -84,3 +87,6 @@ routeToPieces page =
 
         Settings ->
             [ "settings" ]
+
+        PlayingGame gameId ->
+            [ "game", gameId ]
