@@ -1,4 +1,4 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Color(..), GameInfo, challenge, start)
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Color(..), GameInfo, challenge, start, opengames, mygames)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
@@ -11,6 +11,7 @@ import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 --import Json.Encode as Encode exposing (Encoder)
 import Url exposing (Url)
 import Username exposing (Username)
+import Base64
 
 
 
@@ -26,8 +27,12 @@ username (Cred val _) =
 
 
 credHeader : Cred -> Http.Header
-credHeader (Cred _ str) =
-    Http.header "authorization" ("Token " ++ str)
+credHeader (Cred usr str) =
+    let
+        uname = Username.toString usr
+        basic = uname ++ ":" ++ str |> Base64.encode
+    in
+    Http.header "authorization" ( "Basic " ++ basic )
 
 
 get: Endpoint -> Http.Body -> Maybe Cred -> Http.Expect msg -> Cmd msg
