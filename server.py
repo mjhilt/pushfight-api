@@ -38,7 +38,7 @@ def _auth_check(user, token):
         info = json.loads(str(b, 'utf8'))
     except:
         return False
-    return user == info.get('user') and info.get('expires') > time.time()
+    return user == info.get('user')
 
 def new_anonymous_user():
     for i in range(10000):
@@ -153,7 +153,7 @@ def make_game(user1, user2, color='white', timed=False):
         }
 
 
-@b.post('1/game/challenge')
+@b.post('/1/game/challenge')
 @b.auth_basic(_auth_check)
 def post_challenge():
     opponent = None
@@ -165,7 +165,7 @@ def post_challenge():
     return start_impl(opponent=opponent)
 
 
-@b.post('1/game/start')
+@b.post('/1/game/start')
 @b.auth_basic(_auth_check)
 def post_start():
     return start_impl()
@@ -197,11 +197,11 @@ def start_impl(opponent=None):
 
     try:
         timed = body.timed
-    except KeyError:
+    except AttributeError:
         timed = False
 
-    game = make_game(user['_id'], opponent['_id'], color=color, timed=timed)
-    print(game)
+    game = make_game(username, opponent, color=color, timed=timed)
+    # print(game)
     db.put('games', '_id', game)
     return {
         "game": game['_id'],
