@@ -166,6 +166,7 @@ def post_challenge():
 
 
 @b.post('1/game/start')
+@b.auth_basic(_auth_check)
 def post_start():
     return start_impl()
 
@@ -200,6 +201,7 @@ def start_impl(opponent=None):
         timed = False
 
     game = make_game(user['_id'], opponent['_id'], color=color, timed=timed)
+    print(game)
     db.put('games', '_id', game)
     return {
         "game": game['_id'],
