@@ -205,8 +205,6 @@ update msg model =
             ( {model|myGames=gameIds}, Cmd.none)
         GoToGame gameId ->
             (model, Cmd.none)
-        JoinGame gameId ->
-            (model, Cmd.none)
         Refresh ->
             (model, refresh (Session.cred model.session))
 

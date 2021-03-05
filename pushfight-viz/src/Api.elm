@@ -32,7 +32,7 @@ credHeader (Cred usr str) =
         uname = Username.toString usr
         basic = uname ++ ":" ++ str |> Base64.encode
     in
-    Http.header "authorization" ( "Basic " ++ basic )
+    Http.header "Authorization" ( "Basic " ++ basic )
 
 
 get: Endpoint -> Http.Body -> Maybe Cred -> Http.Expect msg -> Cmd msg
