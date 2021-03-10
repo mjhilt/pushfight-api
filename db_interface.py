@@ -128,16 +128,17 @@ class TestDB(Base):
             _id = value.get('_id')
         except:
             raise ValueError  # or something like that
-        if not isinstance(_id, int):
-            raise ValueError
-        if not _id == key:
-            raise ValueError
+        # if not isinstance(_id, int):
+        #     raise ValueError
+        # if not _id == key:
+        #     raise ValueError
 
         if bucket == 'users':
             self.USERS[_id] = value
         elif bucket == 'games':
             self.GAMES[_id] = value
-        raise KeyError("No such bucket")
+        else:
+            raise KeyError("No such bucket")
 
     def delete(self, key):
         if not isinstance(key, int):
