@@ -1,4 +1,7 @@
-module Pushfight.GameStage exposing (GameStage(..), isSetup, isGameOver, isWhiteTurn, isBlackTurn)
+module Pushfight.GameStage exposing (GameStage(..), isSetup, isGameOver, isWhiteTurn, isBlackTurn, encodeGameStage, decodeGameStage)
+
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 type GameStage
     = WhiteSetup
@@ -52,4 +55,46 @@ isBlackTurn gameStage =
         _ ->
             False
 
--- TODO GameStage Encoder/Decoder
+decodeGameStage : Decoder GameStage
+decodeGameStage =
+    Decode.field "gameStage" Decode.string
+        |> Decode.andThen decodeGameStageImpl
+
+decodeGameStageImpl : String -> Decoder GameStage
+decodeGameStageImpl gs =
+    case gs of
+        "whiteSetup" ->
+            Decode.succeed WhiteSetup
+        "blackSetup" ->
+            Decode.succeed BlackSetup
+        "whiteTurn" ->
+            Decode.succeed WhiteTurn
+        "blackTurn" ->
+            Decode.succeed BlackTurn
+        "whiteWon" ->
+            Decode.succeed WhiteWon
+        "blackWon" ->
+            Decode.succeed BlackWon
+        "draw" ->
+            Decode.succeed Draw
+        other ->
+            Decode.fail <|
+                "Unable to interpret game stage: " ++ other
+
+encodeGameStage : GameStage -> Encode.Value
+encodeGameStage gs =
+    case gs of
+        WhiteSetup ->
+            Encode.string "whiteSetup"
+        BlackSetup ->
+            Encode.string "blackSetup"
+        WhiteTurn ->
+            Encode.string "whiteTurn"
+        BlackTurn ->
+            Encode.string "blackTurn"
+        WhiteWon ->
+            Encode.string "whiteWon"
+        BlackWon ->
+            Encode.string "blackWon"
+        Draw ->
+            Encode.string "draw"

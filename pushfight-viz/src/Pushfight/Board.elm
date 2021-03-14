@@ -1,4 +1,8 @@
-module Pushfight.Board exposing (Board, move)
+module Pushfight.Board exposing (Board, move, encodeBoard, decodeBoard)
+
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode
 
 import Set
 
@@ -264,9 +268,41 @@ move board from to =
         _ ->
             Nothing
 
---encodeBoard : Board -> Encode.Value
---encodeBoard board =
+encodeBoard : Board -> Encode.Value
+encodeBoard board =
+    let
+        anchor =
+            case board.anchor of
+                Just a ->
+                    Encode.int a
+                Nothing ->
+                    Encode.null
+    in
+    Encode.object
+        [ ("wp1", Encode.int board.wp1)
+        , ("wp2", Encode.int board.wp2)
+        , ("wp3", Encode.int board.wp3)
+        , ("wm1", Encode.int board.wm1)
+        , ("wm2", Encode.int board.wm2)
+        , ("bp1", Encode.int board.bp1)
+        , ("bp2", Encode.int board.bp2)
+        , ("bp3", Encode.int board.bp3)
+        , ("bm1", Encode.int board.bm1)
+        , ("bm2", Encode.int board.bm2)
+        , ("anchor",     anchor)
+        ]
 
----- https://package.elm-lang.org/packages/elm/json/latest/Json-Decode#andThen
----- ^ for failing the game stage parse
---decodeBoard : Decoder Board
+decodeBoard : Decoder Board
+decodeBoard =
+    Decode.succeed Board
+        |> required "wp1" Decode.int
+        |> required "wp2" Decode.int
+        |> required "wp3" Decode.int
+        |> required "wm1" Decode.int
+        |> required "wm2" Decode.int
+        |> required "bp1" Decode.int
+        |> required "bp2" Decode.int
+        |> required "bp3" Decode.int
+        |> required "bm1" Decode.int
+        |> required "bm2" Decode.int
+        |> required "anchor" (Decode.nullable Decode.int)
