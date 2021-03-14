@@ -86,11 +86,13 @@ def register():
     #   * Returns: {username: `<uuid>`, token: "newsecret"}
     body = b.request.json
     if not body:
-        b.abort(400, "Bad request")
+        b.abort(400, "Bad request - no body")
+    if 'user' in body:
+        body = body['user']
     email = body.get('email')
     password = body.get('password')
     if not email or not password:
-        b.abort(400, "Bad request")
+        b.abort(400, "Bad request - no username/password")
 
     current = db.find('users', email, key='email')
     if len(current) > 0:
