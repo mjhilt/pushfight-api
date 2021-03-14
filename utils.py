@@ -3,7 +3,7 @@ import bcrypt
 
 # We use bcrypt to do the actual hashing and comparisons
 def hash_pw(plaintext):
-    return bcrypt.hashpw(plaintext.encode(), bcrypt.gensalt())
+    return bcrypt.hashpw(plaintext.encode(), bcrypt.gensalt()).decode('utf8')
 
 def check_pw(pw, hashed):
     return bcrypt.checkpw(pw, hashed)

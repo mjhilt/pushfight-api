@@ -2,10 +2,25 @@
 import server
 import bottle as b
 from utils import b64encode
+from db_interface import db
 
 from boddle import boddle
 
 token = None
+
+def test_register():
+    with boddle(json={'email': "TeaUponTweed@gmail.com", "password": "salted:hashed_password"}):
+        try:
+            res = server.register()
+        except b.HTTPError as e:
+            assert False
+        assert res.get('username') == 1
+
+    with boddle(json={'email': "TeaUponTweed@gmail.com", "password": "salted:hashed_password"}):
+        try:
+            res = server.register()
+        except b.HTTPError as e:
+            assert e.status_code == 400
 
 def test_login():
     global token
@@ -62,5 +77,6 @@ def test_move():
 
 if __name__ == '__main__':
     server.load_session_key()
+    test_register()
     test_login()
     test_check_user()

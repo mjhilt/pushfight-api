@@ -24,7 +24,7 @@ def init_board():
 def check_cred(user, password):
     # Check a user's stored password against a presented one
     for rec in db.find('users', user, key='email'):
-        stored = rec.get('password')
+        stored = rec.get('password').encode('utf8')
         return stored and check_pw(password, stored)
     return False
 
@@ -79,6 +79,25 @@ class Game(object):
         # Pick player colors
         # TODO: Make dict keyed by player id
         self.colors = random.shuffle([1,2])
+
+@b.post('/1/register')
+def register():
+    # Body: {email: "a.valid.email@domain.com", password: "secret"}
+    #   * Returns: {username: `<uuid>`, token: "newsecret"}
+    body = b.request.json
+    if not body:
+        b.abort(400, "Bad request")
+    email = body.get('email')
+    password = body.get('password')
+    if not email or not password:
+        b.abort(400, "Bad request")
+
+    current = db.find('users', email, key='email')
+    if len(current) > 0:
+        b.abort(400, "Email already registered")
+    hashed_string = hash_pw(password)
+    doc = db.put('users', {"email": email, "password": hashed_string}, key='email')
+    return {"username": doc['_id']}
 
 
 @b.post('/1/login')
@@ -202,7 +221,7 @@ def start_impl(opponent=None):
 
     game = make_game(username, opponent, color=color, timed=timed)
     # print(game)
-    db.put('games', '_id', game)
+    db.put('games', game)
     return {
         "game": game['_id'],
         "state": game.state,
