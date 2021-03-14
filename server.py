@@ -163,6 +163,7 @@ def make_game(user1, user2, color='white', timed=False):
     _id = '{}_{}_{}'.format(user1, user2, int(time.time()))
     return {
             "_id": _id,
+            "state": init_board(),
             "white_player": user1 if color == 'white' else user2,
             "black_player": user2 if color == 'white' else user1,
             "white_setup": None,
@@ -224,7 +225,7 @@ def start_impl(opponent=None):
     db.put('games', game)
     return {
         "game": game['_id'],
-        "state": game.state,
+        "state": game['state'],
         "color": color,
         "timer": None, # TODO
     }

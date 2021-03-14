@@ -132,8 +132,23 @@ def is_inbounds(row, col):
         return False
 
 
-EXAMPLE_BOARD = Board(
-    pieces={
+# EXAMPLE_BOARD = Board(
+#     pieces={
+#         'wp1': (1, 4),
+#         'wp2': (2, 4),
+#         'wp3': (2, 2),
+#         'wm1': (0, 4),
+#         'wm2': (3, 4),
+#         'bp1': (3, 5),
+#         'bp2': (2, 5),
+#         'bp3': (0, 5),
+#         'bm1': (1, 5),
+#         'bm2': (1, 6)
+#     },
+#     anchored=None,
+#     is_whites_turn=True
+# )
+EXAMPLE_BOARD = {
         'wp1': (1, 4),
         'wp2': (2, 4),
         'wp3': (2, 2),
@@ -143,8 +158,7 @@ EXAMPLE_BOARD = Board(
         'bp2': (2, 5),
         'bp3': (0, 5),
         'bm1': (1, 5),
-        'bm2': (1, 6)
-    },
-    anchored=None,
-    is_whites_turn=True
-)
+        'bm2': (1, 6),
+        'anchor': None
+}
+EXAMPLE_BOARD = {piece:10*xy[0]+xy[1] if xy is not None else None for piece, xy in EXAMPLE_BOARD.items()}
