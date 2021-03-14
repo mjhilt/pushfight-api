@@ -40,5 +40,6 @@ pushfight-viz/elm-stuff/
 elm.js
 deploy/
 secret_api_key
+db.json
 
 __pycache__/
