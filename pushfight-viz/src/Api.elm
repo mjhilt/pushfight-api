@@ -8,6 +8,7 @@ import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Json.Encode as Encode
 import Json.Decode.Pipeline as Pipeline exposing (optional, required)
+import Pushfight.Color exposing (Color)
 --import Json.Encode as Encode exposing (Encoder)
 import Url exposing (Url)
 import Username exposing (Username)
@@ -129,10 +130,6 @@ mygamesDecoder =
     field "games" (Decode.list string)
 
 -- challenge (starts a game)
-
-type Color
-    = White
-    | Black
 
 type alias GameChallenge =
     { color: Maybe Color

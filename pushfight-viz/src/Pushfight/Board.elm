@@ -196,12 +196,24 @@ executePush board pos dir =
         _ ->
             board
 
-
+isInBoard : Int -> Bool
+isInBoard at =
+    let
+        (x,y) = (modBy 10 at, at//10)
+    in
+    if y == 0 then
+         2 < x && x < 8
+    else if y == 1 || y == 2 then
+         0 < x && x < 9
+    else if y == 3 then
+         1 < x && x < 7
+    else
+        False
 
 
 isReachable : Board -> Int -> Int -> Bool
 isReachable board from to =
-    True
+    (not (isPiece board to)) && (isInBoard to)
 
 -- moves a piece
 movePiece : Board -> Int -> Int -> Maybe Board
@@ -210,20 +222,6 @@ movePiece board from to =
         updatePos board from to
     else
         Nothing
-
---isAdjacent : Int -> Int -> Bool
---isAdjacent a b =
---    case a - b of
---        1 ->
---            True
---        -1 ->
---            True
---        -10 ->
---            True
---        10 ->
---            True
---        _ ->
---            False
 
 -- pushes line of pieces and places the anchor
 pushPiece : Board -> Int -> Int -> Maybe Board
