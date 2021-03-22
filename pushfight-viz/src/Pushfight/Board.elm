@@ -1,4 +1,4 @@
-module Pushfight.Board exposing (Board, move, encodeBoard, decodeBoard, anchorAt, pieceOutOfBounds, ixToXY)
+module Pushfight.Board exposing (Board, move, encodeBoard, decodeBoard, anchorAt, pieceOutOfBounds, ixToXY, isWhitePiece, isBlackPiece)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
@@ -214,7 +214,7 @@ isInBoard at =
     else
         False
 
-pieceOutOfBounds : Board -> Board
+pieceOutOfBounds : Board -> Bool
 pieceOutOfBounds board =
     [ board.wp1
     , board.wp2

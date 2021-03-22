@@ -1,36 +1,54 @@
-module Pushfight.Game exposing (Game, init, view, update)
-import Pushfight.Board exposing (Board)
-import Pushfight.GameStage exposing (GameStage)
-import Pushfight.Color exposing (Color)
-import Pushfight.Orientation exposing (Orientation)
-import Pushfight.DragState
+module Pushfight.Game exposing (Model, init, view, update, subscriptions)
+
+import Svg exposing (Svg)
+import Svg.Attributes
+import Html
+
+import Pushfight.Board as Board
+import Pushfight.Move exposing (Move)
+import Pushfight.GameStage exposing (GameStage(..))
+import Pushfight.Color exposing (Color(..))
+import Pushfight.Orientation as Orientation
+import Pushfight.DragState as DragState
 
 -- model
 
 type Request
     = NoRequest
-    | TakebackRequested (GameStage)
-    | DrawOffered (GameStage)
+    | TakebackRequested
+    | DrawOffered
 
 type alias Model =
-    { board: Board
+    { board: Board.Board
     , gameStage: GameStage
     , color: Color
-    , moves: List (Int, Int)
-    , dragState: DragState
+    , orientation: Orientation.Orientation
+    , moves: List Move
+    , dragState: DragState.Model
     , gridSize: Int
-    , pauseStage: Request
+    , request: Request
     }
 
 -- init
 
-init: Board -> GameStage -> Color -> Moves -> Game
-init playWhite =
+init: Board.Board -> GameStage -> Color -> List Move -> Int -> Request -> Model
+init board gameStage color moves gridSize request =
+    let
+        orientation =
+            case color of
+                White ->
+                    Orientation.Ninety
+                Black ->
+                    Orientation.TwoSeventy
+    in
     { board = board
     , gameStage = gameStage
     , color = color
     , moves = moves
+    , orientation = orientation
     , dragState = DragState.init
+    , gridSize = gridSize
+    , request = request
     }
 
 
@@ -55,24 +73,29 @@ undoMove model =
             |> List.tail
         moves =
             case revMoves of
-                Just moves ->
-                    List.reverse moves
+                Just ms ->
+                    List.reverse ms
                 Nothing ->
                     []
     in
     {model|moves=moves}
 
-doMoves : List Move -> Board -> Maybe Board
+doMoves : List Move -> Board.Board -> Maybe Board.Board
 doMoves moves board =
     case moves of
         [] ->
-            board
-        [m::ms] ->
-            Maybe.map
-            |> doMoves ms
-            |> Board.move board m
+            Just board
+        m::ms ->
+            case Board.move board m.from m.to of
+                Just b ->
+                    doMoves ms b
+                Nothing ->
+                    Nothing
+            --Maybe.map
+            --|> doMoves ms
+            --|> Board.move board m
 
-handleEndTurn : List Moves -> Board -> GameStage -> Color -> Maybe (Board,GameStage)
+handleEndTurn : List Move -> Board.Board -> GameStage -> Color -> Maybe (Board.Board,GameStage)
 handleEndTurn moves board gameStage color =
     --case List.reverse moves of
     --    [] ->
@@ -80,62 +103,63 @@ handleEndTurn moves board gameStage color =
     --    [lastMove::_] ->
     let
         newBoard = doMoves moves board
-        lastMove =
-            moves
-            |> List.reverse
-            |> List.head
+        --lastMove =
         lastMovePush =
-            Maybe.map
-            |> Board.anchorAt board
-            |> lastMove.to
+            case moves |> List.reverse |> List.head of
+                Just lastMove ->
+                     Board.anchorAt board lastMove.to
+                Nothing ->
+                    False
+
+            --|> 
+            --|> 
+            --Maybe.map
+            --|> Board.anchorAt board
+            --|> lastMove.to
 
         pieceOutOfBounds =
             Board.pieceOutOfBounds board
-        --moveLen =
+        moveLen = List.length moves
     in
-    case (newBoard, gameStage, ((((moveLen > 0) && (moveLen <= 3)), color), (lastMovePush, pieceOutOfBounds)) of
-        (Just board, WhiteSetup, ((_, White), (False,False)) ->
-            Just (board, BlackSetup)
-        (Just board, BlackSetup, ((_, Black), (False,False)) ->
-            Just (board, WhiteTurn)
-        (Just board, WhiteTurn, ((True, White), (True,False)) ->
-            Just (board, BlackTurn)
-        (Just board, BlackTurn, ((True, Black), (True,False)) ->
-            Just (board, WhiteTurn)
-        (Just board, WhiteTurn, ((True, White), (True,True)) ->
-            Just (board, WhiteWon)
-        (Just board, BlackTurn, ((True, Black), (True,True)) ->
-            Just (board, BlackWon)
+    case (newBoard, gameStage, ((((moveLen > 0) && (moveLen <= 3)), color), (lastMovePush, pieceOutOfBounds))) of
+        (Just b, WhiteSetup, ((_, White), (False,False))) ->
+            Just (b, BlackSetup)
+        (Just b, BlackSetup, ((_, Black), (False,False))) ->
+            Just (b, WhiteTurn)
+        (Just b, WhiteTurn, ((True, White), (True,False))) ->
+            Just (b, BlackTurn)
+        (Just b, BlackTurn, ((True, Black), (True,False))) ->
+            Just (b, WhiteTurn)
+        (Just b, WhiteTurn, ((True, White), (True,True))) ->
+            Just (b, WhiteWon)
+        (Just b, BlackTurn, ((True, Black), (True,True))) ->
+            Just (b, BlackWon)
         _ ->
             Nothing
 
-handleDrag : Model -> Drag -> DragState -> Model
-handleDrag model {from, to} dragState =
+handleDrag : Model -> DragState.Drag -> DragState.Model -> Model
+handleDrag model drag dragState =
     let
         --dx = (to.x - from.x)//model.gridSize
         --dy = (to.y - from.y)//model.gridSize
-        mapXY = Orientation.mapXY model.Orientation
-        (fromX, fromY) = mapXY (from.x//model.gridSize) (from.y//model.gridSize)
-        (toX, toY) = mapXY (to.x//model.gridSize) (to.y//model.gridSize)
+        mapXY = Orientation.mapXY model.orientation
+        (fromX, fromY) = mapXY (drag.from.x//model.gridSize) (drag.from.y//model.gridSize)
+        (toX, toY) = mapXY (drag.to.x//model.gridSize) (drag.to.y//model.gridSize)
         from = fromX+10*fromY
         to = toX+10*toY
         newMoves = 
             case List.reverse model.moves of
                 [] ->
                     [{from=from, to=to}]
-                [lastMove::otherMoves] ->
+                lastMove::otherMoves ->
                     if lastMove.to == from then
-                        List.append
-                        |> List.reverse otherMoves
-                        |> [{from=lastMove.from,to=to}]
+                        List.append (List.reverse otherMoves) [{from=lastMove.from,to=to}]
                     else
-                        List.append
-                        |> model.moves
-                        |> [{from=from,to=to}]
+                        List.append model.moves [{from=from,to=to}]
         isValid =
-            ((Board.isWite board from) && (model.color == White)) || ((Board.isBlack board from) && (model.color == Black))
+            ((Board.isWhitePiece model.board from) && (model.color == White)) || ((Board.isBlackPiece model.board from) && (model.color == Black))
     in
-    case (isValid, doMoves newMoves board) of
+    case (isValid, doMoves newMoves model.board) of
         (True, Just _) ->
             {model|moves=newMoves, dragState=dragState}
         _ ->
@@ -146,14 +170,14 @@ handleDrag model {from, to} dragState =
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        DragMsg dm ->
+        DragMsg dragMsg ->
             let
                 (dragState, finishedDrag) =
-                    DragState.update model.dragState dm
+                    DragState.update dragMsg model.dragState
             in
             case finishedDrag of
                 Just drag ->
-                    handleDrag model drag ds
+                    handleDrag model drag dragState
                 Nothing ->
                     {model|dragState=dragState}
         EndTurn ->
@@ -199,7 +223,10 @@ update msg model =
 --                , Browser.Events.onMouseUp (Decode.map DragEnd position)
 --                ]
 
-
+-- subscriptions
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.map DragMsg DragState.subscriptions
 -- helpers
 
 
@@ -217,30 +244,30 @@ view : Model -> Html.Html Msg
 view model =
     let
         rmapXY = Orientation.rmapXY model.orientation
-        pieces =
-            [ drawPiece model.gridSize rmapXY True True board.wp1
-            , drawPiece model.gridSize rmapXY True True board.wp2
-            , drawPiece model.gridSize rmapXY True True board.wp3
-            , drawPiece model.gridSize rmapXY True False board.wm1
-            , drawPiece model.gridSize rmapXY True False board.wm2
-            , drawPiece model.gridSize rmapXY False True board.bp1
-            , drawPiece model.gridSize rmapXY False True board.bp2
-            , drawPiece model.gridSize rmapXY False True board.bp3
-            , drawPiece model.gridSize rmapXY False False board.bm1
-            , drawPiece model.gridSize rmapXY False False board.bm2
+        pieces = List.foldl (++) []
+            [ drawPiece model.gridSize rmapXY True True model.board.wp1
+            , drawPiece model.gridSize rmapXY True True model.board.wp2
+            , drawPiece model.gridSize rmapXY True True model.board.wp3
+            , drawPiece model.gridSize rmapXY True False model.board.wm1
+            , drawPiece model.gridSize rmapXY True False model.board.wm2
+            , drawPiece model.gridSize rmapXY False True model.board.bp1
+            , drawPiece model.gridSize rmapXY False True model.board.bp2
+            , drawPiece model.gridSize rmapXY False True model.board.bp3
+            , drawPiece model.gridSize rmapXY False False model.board.bm1
+            , drawPiece model.gridSize rmapXY False False model.board.bm2
             ]
         anchor =
-            case model.anchor of
+            case model.board.anchor of
                 Just a ->
                     let
                         (x,y) = Board.ixToXY a
                         (xr,yr) = rmapXY x y
                     in
-                    [drawAnchor model.gridSize xr yr]
+                    drawAnchor model.gridSize xr yr
                 Nothing ->
                     []
         board =
-            drawBoard size rmapXY
+            drawBoard model.gridSize rmapXY
         width = String.fromInt (4*model.gridSize)
         height = String.fromInt (10*model.gridSize)
         title =
@@ -280,15 +307,17 @@ view model =
 
     --, anchor: Maybe Int
 
-drawPiece : Int -> (Int -> Int -> (Int, Int)) -> Bool -> Bool -> Int -> Svg Msg
+drawPiece : Int -> (Int -> Int -> (Int, Int)) -> Bool -> Bool -> Int -> List (Svg Msg)
 drawPiece size rmapXY isWhite isPusher ix =
     --(x,y) = (modBy 10 ix, ix//10)
-    (x,y) = Board.ixToXY ix
-    (color,accentColor) =
-        if isWhite then
-            (pieceColorWhite, pieceColorBlack)
-        else
-            (pieceColorBlack, pieceColorWhite)
+    let
+        (x,y) = Board.ixToXY ix
+        (color,accentColor) =
+            if isWhite then
+                (pieceColorWhite, pieceColorBlack)
+            else
+                (pieceColorBlack, pieceColorWhite)
+    in
     if isPusher then
         drawPusher size x y color accentColor
     else
@@ -338,18 +367,18 @@ drawBoardSquare size x y =
             --rotateXY x y
         (color, extraStyles) =
             --if isInBoard x y then
-            (boardColor, [Attributes.strokeWidth "1", Attributes.stroke "black"])
+            (boardColor, [Svg.Attributes.strokeWidth "1", Svg.Attributes.stroke "black"])
             --else
-            --     ("#aaaaaa", [Attributes.fillOpacity "0"])
+            --     ("#aaaaaa", [Svg.Attributes.fillOpacity "0"])
 
     in
         Svg.rect (
             List.append extraStyles
-                [ Attributes.x <| String.fromInt (size * xr)
-                , Attributes.y <| String.fromInt (size * yr)
-                , Attributes.width <| String.fromInt size
-                , Attributes.height <| String.fromInt size
-                , Attributes.fill color
+                [ Svg.Attributes.x <| String.fromInt (size * x)
+                , Svg.Attributes.y <| String.fromInt (size * y)
+                , Svg.Attributes.width <| String.fromInt size
+                , Svg.Attributes.height <| String.fromInt size
+                , Svg.Attributes.fill color
                 ]
             ) []
 
@@ -363,14 +392,16 @@ drawBoard size rotateXY =
             ,       32,33,34,35,36,37
             ]
         boardXY = List.map Board.ixToXY boardIxs
-        boardRXY =
-            List.map
-            |> \(x,y) -> rotateXY x y
-            boardXY
+        (xs,ys) = List.unzip boardXY
+        boardRXY = List.map2 rotateXY xs ys
+        (xrs,yrs) = List.unzip boardRXY
+
     in
-    List.map
-    |> \(x,y) -> drawBoardSquare size x y
-    |> boardRXY
+    List.map2 (drawBoardSquare size) xrs yrs
+    --|> List.unzip
+    --List.map
+    --|> \(x,y) -> drawBoardSquare size x y
+    --|> boardRXY
 
 --drawRow : (Int -> Int -> (Int,Int)) -> Int -> List Int -> Int -> List (Svg Msg)
 --drawRow rotateXY size xs y =
@@ -390,20 +421,20 @@ drawPusher size x y color accentColor =
             (toFloat (size * x), toFloat (size * y), toFloat size)
     in
         [ Svg.rect
-            [ Attributes.fill accentColor
-            , Attributes.x <| String.fromInt <| round (posx + fsize * 0.02)
-            , Attributes.y <| String.fromInt <| round (posy + fsize * 0.02)
-            , Attributes.width <| String.fromInt <| round (fsize * 0.96)
-            , Attributes.height <| String.fromInt <| round (fsize * 0.96)
+            [ Svg.Attributes.fill accentColor
+            , Svg.Attributes.x <| String.fromInt <| round (posx + fsize * 0.02)
+            , Svg.Attributes.y <| String.fromInt <| round (posy + fsize * 0.02)
+            , Svg.Attributes.width <| String.fromInt <| round (fsize * 0.96)
+            , Svg.Attributes.height <| String.fromInt <| round (fsize * 0.96)
             ]
             []
         , Svg.rect
-            [ Attributes.fill color
-            , Attributes.x <| String.fromInt <| round (posx + fsize * 0.05)
-            , Attributes.y <| String.fromInt <| round (posy + fsize * 0.05)
-            , Attributes.width <| String.fromInt <| round (fsize * 0.9)
-            , Attributes.height <| String.fromInt <| round (fsize * 0.9)
-            , Touch.onStart ( \e -> MouseDownAt (x*size + size//2 |> toFloat, y*size + size//2 |> toFloat) )
+            [ Svg.Attributes.fill color
+            , Svg.Attributes.x <| String.fromInt <| round (posx + fsize * 0.05)
+            , Svg.Attributes.y <| String.fromInt <| round (posy + fsize * 0.05)
+            , Svg.Attributes.width <| String.fromInt <| round (fsize * 0.9)
+            , Svg.Attributes.height <| String.fromInt <| round (fsize * 0.9)
+            --, Touch.onStart ( \e -> MouseDownAt (x*size + size//2 |> toFloat, y*size + size//2 |> toFloat) )
             ]
             []
         ]
@@ -416,18 +447,18 @@ drawMover size x y color accentColor =
             (toFloat (size * x), toFloat (size * y), toFloat size)
     in
         [ Svg.circle
-            [ Attributes.fill accentColor
-            , Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
-            , Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
-            , Attributes.r <| String.fromInt <| round (fsize / 2.0)
+            [ Svg.Attributes.fill accentColor
+            , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
+            , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
+            , Svg.Attributes.r <| String.fromInt <| round (fsize / 2.0)
             ]
             []
         , Svg.circle
-            [ Attributes.fill color
-            , Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
-            , Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
-            , Attributes.r <| String.fromInt <| round ((fsize * 0.95) / 2.0)
-            , Touch.onStart ( \e -> MouseDownAt (x*size + size//2 |> toFloat, y*size + size//2 |> toFloat) )
+            [ Svg.Attributes.fill color
+            , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
+            , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
+            , Svg.Attributes.r <| String.fromInt <| round ((fsize * 0.95) / 2.0)
+            --, Touch.onStart ( \e -> MouseDownAt (x*size + size//2 |> toFloat, y*size + size//2 |> toFloat) )
             ]
             []
         ]
@@ -441,10 +472,10 @@ drawAnchor size x y =
     in
         [
             Svg.circle
-                [ Attributes.fill anchorColor
-                , Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
-                , Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
-                , Attributes.r <| String.fromInt <| round (fsize / 4.0)
+                [ Svg.Attributes.fill anchorColor
+                , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
+                , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
+                , Svg.Attributes.r <| String.fromInt <| round (fsize / 4.0)
                 ]
                 []
         ]

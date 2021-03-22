@@ -3,9 +3,9 @@ module Pushfight.Move exposing (Move, decodeMove)
 import Json.Decode as Decode exposing (Decoder)
 
 type alias Move =
-	{ from: Int
-	, to: Int
-	}
+    { from: Int
+    , to: Int
+    }
 
 
 decodeMove : Decode.Decoder Move

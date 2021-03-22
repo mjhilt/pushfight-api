@@ -1,4 +1,4 @@
-module Pushfight.DragState exposing (MousePosition, Model, Msg, update, subscriptions)
+module Pushfight.DragState exposing (MousePosition, Model, Msg, update, subscriptions, Drag, init)
 
 import Browser.Events
 import Json.Decode as Decode exposing (Decoder)
@@ -64,7 +64,7 @@ subscriptions =
 
 -- helpers
 
-getDrag: DragState -> Maybe Drag
+getDrag: Model -> Maybe Drag
 getDrag dragState =
     case dragState of
         NotDragging ->

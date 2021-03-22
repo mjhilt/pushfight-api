@@ -1,4 +1,4 @@
-module Pushfight.Orientation exposing (Orientation, mapXY, rmapXY)
+module Pushfight.Orientation exposing (Orientation(..), mapXY, rmapXY)
 
 
 type Orientation
