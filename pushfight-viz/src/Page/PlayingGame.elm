@@ -6,7 +6,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Route
 
-import Api exposing (Cred, Color(..))
+import Api exposing (Cred)
+import Pushfight.Color exposing (Color(..))
+
 import Session exposing (Session)
 
 

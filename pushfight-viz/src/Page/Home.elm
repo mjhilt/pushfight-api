@@ -3,7 +3,8 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
-import Api exposing (Cred, GameChallenge, Color(..))
+import Api exposing (Cred, GameChallenge)
+import Pushfight.Color exposing (Color(..))
 import Api.Endpoint as Endpoint
 import Browser.Dom as Dom
 import Html exposing (..)

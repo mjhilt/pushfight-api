@@ -1,4 +1,4 @@
-module Pushfight.Board exposing (Board, move, encodeBoard, decodeBoard)
+module Pushfight.Board exposing (Board, move, encodeBoard, decodeBoard, anchorAt, pieceOutOfBounds, ixToXY)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
@@ -196,10 +196,14 @@ executePush board pos dir =
         _ ->
             board
 
+ixToXY : Int -> (Int, Int)
+ixToXY ix =
+    (modBy 10 ix, ix//10)
+
 isInBoard : Int -> Bool
 isInBoard at =
     let
-        (x,y) = (modBy 10 at, at//10)
+        (x,y) = ixToXY at
     in
     if y == 0 then
          2 < x && x < 8
@@ -209,6 +213,22 @@ isInBoard at =
          1 < x && x < 7
     else
         False
+
+pieceOutOfBounds : Board -> Board
+pieceOutOfBounds board =
+    [ board.wp1
+    , board.wp2
+    , board.wp3
+    , board.wm1
+    , board.wm2
+    , board.bp1
+    , board.bp2
+    , board.bp3
+    , board.bm1
+    , board.bm2
+    ]
+    |> List.map isInBoard
+    |> List.foldl (||) False
 
 
 isReachable : Board -> Int -> Int -> Bool
@@ -265,6 +285,10 @@ move board from to =
             movePiece board from to
         _ ->
             Nothing
+
+anchorAt : Board -> Int -> Bool
+anchorAt board at =
+    board.anchor == Just at
 
 encodeBoard : Board -> Encode.Value
 encodeBoard board =

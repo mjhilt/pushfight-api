@@ -1,6 +1,5 @@
-module Pushfight.Color exposing Color
+module Pushfight.Color exposing (Color(..))
 
 type Color
     = White
     | Black
-

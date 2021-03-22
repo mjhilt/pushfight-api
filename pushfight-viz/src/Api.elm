@@ -1,19 +1,19 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, Color(..), GameInfo, challenge, start, opengames, mygames)
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, GameInfo, challenge, start, opengames, mygames)
 
-import Api.Endpoint as Endpoint exposing (Endpoint)
-import Avatar exposing (Avatar)
+import Base64
 import Browser
 import Browser.Navigation as Nav
 import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
-import Json.Encode as Encode
 import Json.Decode.Pipeline as Pipeline exposing (optional, required)
-import Pushfight.Color exposing (Color)
---import Json.Encode as Encode exposing (Encoder)
+import Json.Encode as Encode
 import Url exposing (Url)
-import Username exposing (Username)
-import Base64
 
+
+import Avatar exposing (Avatar)
+import Api.Endpoint as Endpoint exposing (Endpoint)
+import Pushfight.Color exposing (Color(..))
+import Username exposing (Username)
 
 
 -- CRED
