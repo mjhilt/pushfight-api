@@ -5,24 +5,40 @@ import Html.Attributes exposing (..)
 --import Html.Events exposing (onInput)
 import Html.Events exposing (onClick)
 import Route
+import Http
 
 import Api exposing (Cred)
-import Pushfight.Color exposing (Color(..))
-
+--import Pushfight.Color exposing (Color(..))
+import Pushfight.Game as Game exposing (OutMsg(..))
+import Pushfight.Board as Board
+import Pushfight.GameStage as GameStage exposing (GameStage)
+import Pushfight.Move as Move exposing (Move)
+import Pushfight.Request as Request exposing (Request)
 import Session exposing (Session)
 
 
 type alias Model =
-    { session : Session
-    , gameId : String
-    --, gameColor : Color
+    { session: Session
+    , gameId: String
+    --, playerColor: Color
+    , gameState: GameState
     }
+
+type GameState
+    = Loading
+    | Loaded (Game.Model)
+
+    --| YourTurn (Game.Model)
+    --| NotYourTurn (Game.Model)
+
 
 init : Session -> String -> (Model, Cmd Msg)
 init session gameId =
     (
         { session = session
         , gameId = gameId
+        --, playerColor = color
+        , gameState = Loading
         }
     ,
         Cmd.none
@@ -43,9 +59,20 @@ view model =
 
 -- UPDATE
 
+type alias Wakka =
+    { board: Board.Board
+    , moves: List Move
+    , gameStage : GameStage
+    , request: Request
+    }
+
+
 type Msg
     = BackToLobby
     | GotSession Session
+    | GotGameMsg Game.Msg
+    | GameFromServer Wakka
+    | MovePosted (Result Http.Error ())
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -55,13 +82,49 @@ update msg model =
 
         GotSession session ->
             ({model | session = session}, Cmd.none)
+        GotGameMsg gmsg ->
+            case model.gameState of
+                Loading ->
+                    (model, Cmd.none)
+                Loaded game ->
+                    let
+                        (newGame, outMsg) =
+                            Game.update gmsg game
+                        gameCmd =
+                            case outMsg of
+                                SendNoOp ->
+                                    Cmd.none
+                                SendTurnEnded (finalBoard, finalGameStage) ->
+                                    case Session.cred model.session of
+                                        Just cred ->
+                                            Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred MovePosted
+                                        Nothing ->
+                                            Cmd.none
+                                SendRequestTakeback ->
+                                    Cmd.none
+                                SendOfferDraw ->
+                                    Cmd.none
+                                SendAcceptDraw ->
+                                    Cmd.none
+                                SendAcceptTakeback ->
+                                    Cmd.none
+                    in
+
+                    ({model|gameState=Loaded newGame}, gameCmd)
+        MovePosted _ ->
+            (model, Cmd.none)
+        GameFromServer _ ->
+            (model, Cmd.none)
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+    Sub.batch
+        [ Session.changes GotSession (Session.navKey model.session)
+        , Sub.map GotGameMsg Game.subscriptions
+        ]
 
 
 

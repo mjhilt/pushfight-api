@@ -1,4 +1,4 @@
-port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, GameInfo, challenge, start, opengames, mygames)
+port module Api exposing (Cred, username, login, logout, storeCred, credChanges, register, application, decodeErrors, OpenGame, GameChallenge, GameInfo, challenge, start, opengames, mygames, move)
 
 import Base64
 import Browser
@@ -13,6 +13,11 @@ import Url exposing (Url)
 import Avatar exposing (Avatar)
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Pushfight.Color exposing (Color(..))
+import Pushfight.Board as Board
+import Pushfight.Move as Move
+import Pushfight.GameStage as GameStage
+import Pushfight.Request as Request
+
 import Username exposing (Username)
 
 
@@ -222,6 +227,22 @@ join gid msg cred =
     in
         post Endpoint.gameJoin body (Just cred) (Http.expectJson msg gameDecoder)
 
+-- make move
+move : GameStage.GameStage -> Board.Board -> List Move.Move -> GameStage.GameStage -> Board.Board -> String -> Cred -> (Result Http.Error () -> msg) ->Cmd msg
+move startGameStage board moves finalGameStage finalBoard gameId cred msg =
+    let
+        body =
+            Encode.object
+            [ ("startBoard", Board.encode board)
+            , ("moves", Encode.list Move.encode moves)
+            , ("finalBoard", Board.encode finalBoard)
+            , ("startGameStage", GameStage.encode startGameStage)
+            , ("finalGameStage", GameStage.encode finalGameStage)
+            , ("gameId", Encode.string gameId)
+            , ("timer", Encode.null)
+            ] |> Http.jsonBody
+    in
+        post Endpoint.move body (Just cred) (Http.expectWhatever msg)
 
 -- PERSISTENCE
 

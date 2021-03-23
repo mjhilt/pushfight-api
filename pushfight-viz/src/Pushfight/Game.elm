@@ -1,4 +1,4 @@
-module Pushfight.Game exposing (Model, init, view, update, subscriptions)
+module Pushfight.Game exposing (Model, init, view, update, subscriptions, Msg, OutMsg(..))
 
 import Svg exposing (Svg)
 import Svg.Attributes
@@ -10,13 +10,9 @@ import Pushfight.GameStage exposing (GameStage(..))
 import Pushfight.Color exposing (Color(..))
 import Pushfight.Orientation as Orientation
 import Pushfight.DragState as DragState
+import Pushfight.Request exposing (Request(..))
 
 -- model
-
-type Request
-    = NoRequest
-    | TakebackRequested
-    | DrawOffered
 
 type alias Model =
     { board: Board.Board
@@ -62,6 +58,21 @@ type Msg
     | OfferDraw
     | AcceptTakeback
     | AcceptDraw
+
+type OutMsg
+    = SendNoOp
+    | SendTurnEnded (Board.Board,GameStage)
+    | SendRequestTakeback
+    | SendOfferDraw
+    | SendAcceptDraw
+    | SendAcceptTakeback
+--type OutMsg
+--    = NoOp
+--    | RequestDraw
+--    | AcceptDraw
+--    | RequestTakeback
+--    | AcceptTakeback
+--    | BoardUpdated
 
 
 undoMove : Model -> Model
@@ -167,7 +178,7 @@ handleDrag model drag dragState =
 
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, OutMsg)
 update msg model =
     case msg of
         DragMsg dragMsg ->
@@ -177,66 +188,37 @@ update msg model =
             in
             case finishedDrag of
                 Just drag ->
-                    handleDrag model drag dragState
+                    --let
+                    --    newModel =
+                            
+                    --in
+                    --(newModel, NoOp)
+                    (handleDrag model drag dragState, SendNoOp)
                 Nothing ->
-                    {model|dragState=dragState}
+                    ({model|dragState=dragState}, SendNoOp)
         EndTurn ->
             case handleEndTurn model.moves model.board model.gameStage model.color of
                 Just (board,gameStage) ->
-                    {model|board=board,gameStage=gameStage}
+                    --({model|board=board,gameStage=gameStage}, SendTurnEnded(board, gameStage))
+                    (model, SendTurnEnded(board, gameStage))
                 Nothing ->
-                    model
+                    (model, SendNoOp)
         Undo ->
-            undoMove model
+            (undoMove model, SendNoOp)
         AskForTakeBack ->
-            {model|request=TakebackRequested}
+            ({model|request=TakebackRequested}, SendRequestTakeback)
         OfferDraw ->
-            {model|request=DrawOffered}
+            ({model|request=DrawOffered}, SendOfferDraw)
         AcceptDraw ->
-            {model|gameStage=Draw}
+            ({model|gameStage=Draw}, SendAcceptDraw)
         AcceptTakeback ->
-            model
-
-            --{model|gameStage=Draw}
-    --color =
-    --    if playWhite then
-    --        White
-    --    else
-    --        Black
-
-    --= DragAt Position
-    --| DragEnd Position
-    --| MouseDownAt (Float, Float)
-    --| EndTurn
-    --| Undo
-    --| ToggleEndTurnOnPush Bool
-    --| RotateOrientationCCW
-
---mouseSubsrciptions : DragState -> Sub Msg
---mouseSubsrciptions model =
---    case model.dragState of
---        NotDragging ->
---            Browser.Events.onMouseDown (Decode.map DragAt position)
---        _ ->
---            Sub.batch
---                [ Browser.Events.onMouseMove (Decode.map DragAt position)
---                , Browser.Events.onMouseUp (Decode.map DragEnd position)
---                ]
+            (model, SendAcceptTakeback)
 
 -- subscriptions
-subscriptions : Model -> Sub Msg
-subscriptions model =
+
+subscriptions : Sub Msg
+subscriptions =
     Sub.map DragMsg DragState.subscriptions
--- helpers
-
-
-sign : Int -> Int
-sign n =
-    if n < 0 then
-        -1
-    else
-        1
-
 
 -- view
 
@@ -286,8 +268,6 @@ view model =
                     "BlackWon"
                 Draw ->
                     "Draw"
-        --subitle =
-        --    case model.pr
 
     in
        Html.div []
@@ -305,11 +285,9 @@ view model =
             )
         ]
 
-    --, anchor: Maybe Int
 
 drawPiece : Int -> (Int -> Int -> (Int, Int)) -> Bool -> Bool -> Int -> List (Svg Msg)
 drawPiece size rmapXY isWhite isPusher ix =
-    --(x,y) = (modBy 10 ix, ix//10)
     let
         (x,y) = Board.ixToXY ix
         (color,accentColor) =
@@ -323,8 +301,6 @@ drawPiece size rmapXY isWhite isPusher ix =
     else
         drawMover size x y color accentColor
 
-    --case (isWhite, isPusher) of
-    --    True, True
 boardColor =
     "#BD632F"
 
@@ -340,37 +316,10 @@ pieceMovingColor =
 anchorColor =
     "#A4243B"
 
---drawBoardSquare : Int -> (Int -> Int -> (Int, Int)) -> Int -> Int -> Svg Msg
---drawBoardSquare size rotateXY y x =
---    let
---        (xr, yr) =
---            rotateXY x y
---        (color, extraStyles) =
---            if isInBoard x y then
---                (boardColor, [Attributes.strokeWidth "1", Attributes.stroke "black"])
---            else
---                 ("#aaaaaa", [Attributes.fillOpacity "0"])
-
---    in
---        Svg.rect (
---            List.append extraStyles
---                [ Attributes.x <| String.fromInt (size * xr)
---                , Attributes.y <| String.fromInt (size * yr)
---                , Attributes.width <| String.fromInt size
---                , Attributes.height <| String.fromInt size
---                , Attributes.fill color
---                ]
---            ) []
 drawBoardSquare size x y =
     let
-        --(xr, yr) =
-            --rotateXY x y
         (color, extraStyles) =
-            --if isInBoard x y then
             (boardColor, [Svg.Attributes.strokeWidth "1", Svg.Attributes.stroke "black"])
-            --else
-            --     ("#aaaaaa", [Svg.Attributes.fillOpacity "0"])
-
     in
         Svg.rect (
             List.append extraStyles
@@ -398,21 +347,6 @@ drawBoard size rotateXY =
 
     in
     List.map2 (drawBoardSquare size) xrs yrs
-    --|> List.unzip
-    --List.map
-    --|> \(x,y) -> drawBoardSquare size x y
-    --|> boardRXY
-
---drawRow : (Int -> Int -> (Int,Int)) -> Int -> List Int -> Int -> List (Svg Msg)
---drawRow rotateXY size xs y =
---    List.map (drawBoardSquare size rotateXY y) xs
-
-
---drawBoard : (Int -> Int -> (Int,Int)) -> Int -> List (Svg Msg)
---drawBoard rotateXY size =
---    List.map (drawRow rotateXY size (List.range 0 9)) (List.range 0 3)
---    |> List.concat
-
 
 drawPusher : Int -> Int -> Int -> String -> String -> List (Svg Msg)
 drawPusher size x y color accentColor =

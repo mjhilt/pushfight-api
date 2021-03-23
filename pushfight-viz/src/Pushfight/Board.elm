@@ -1,4 +1,4 @@
-module Pushfight.Board exposing (Board, move, encodeBoard, decodeBoard, anchorAt, pieceOutOfBounds, ixToXY, isWhitePiece, isBlackPiece)
+module Pushfight.Board exposing (Board, move, encode, decode, anchorAt, pieceOutOfBounds, ixToXY, isWhitePiece, isBlackPiece)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
@@ -290,8 +290,8 @@ anchorAt : Board -> Int -> Bool
 anchorAt board at =
     board.anchor == Just at
 
-encodeBoard : Board -> Encode.Value
-encodeBoard board =
+encode : Board -> Encode.Value
+encode board =
     let
         anchor =
             case board.anchor of
@@ -311,11 +311,11 @@ encodeBoard board =
         , ("bp3", Encode.int board.bp3)
         , ("bm1", Encode.int board.bm1)
         , ("bm2", Encode.int board.bm2)
-        , ("anchor",     anchor)
+        , ("anchor", anchor)
         ]
 
-decodeBoard : Decoder Board
-decodeBoard =
+decode : Decoder Board
+decode =
     Decode.succeed Board
         |> required "wp1" Decode.int
         |> required "wp2" Decode.int
