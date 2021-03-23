@@ -1,14 +1,5 @@
 module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
-{-| The homepage. You can get here via either the / or /#/ routes.
--}
-
---import Html.Attributes exposing (attribute, class, classList, href, id, placeholder)
---import Loading
---import Log
---import Page
---import PaginatedList exposing (PaginatedList)
-
 import Api exposing (Cred, GameChallenge)
 import Api.Endpoint as Endpoint
 import Browser.Dom as Dom

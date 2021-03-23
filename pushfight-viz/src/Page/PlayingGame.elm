@@ -20,8 +20,6 @@ import Session exposing (Session)
 type alias Model =
     { session : Session
     , gameId : String
-
-    --, playerColor: Color
     , gameState : GameState
     }
 
@@ -32,16 +30,10 @@ type GameState
 
 
 
---| YourTurn (Game.Model)
---| NotYourTurn (Game.Model)
-
-
 init : Session -> String -> ( Model, Cmd Msg )
 init session gameId =
     ( { session = session
       , gameId = gameId
-
-      --, playerColor = color
       , gameState = Loading
       }
     , Cmd.none

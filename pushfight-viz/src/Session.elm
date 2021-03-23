@@ -18,17 +18,6 @@ type Session
     | Guest Nav.Key
 
 
-
--- INFO
---viewer : Session -> Maybe Cred
---viewer session =
---    case session of
---        LoggedIn _ val ->
---            Just val
---        Guest _ ->
---            Nothing
-
-
 cred : Session -> Maybe Cred
 cred session =
     case session of

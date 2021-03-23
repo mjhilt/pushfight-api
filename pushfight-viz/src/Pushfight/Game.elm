@@ -122,22 +122,13 @@ doMoves moves board =
 
 
 
---Maybe.map
---|> doMoves ms
---|> Board.move board m
-
 
 handleEndTurn : List Move -> Board.Board -> GameStage -> Color -> Maybe ( Board.Board, GameStage )
 handleEndTurn moves board gameStage color =
-    --case List.reverse moves of
-    --    [] ->
-    --        Nothing
-    --    [lastMove::_] ->
     let
         newBoard =
             doMoves moves board
 
-        --lastMove =
         lastMovePush =
             case moves |> List.reverse |> List.head of
                 Just lastMove ->
@@ -146,11 +137,6 @@ handleEndTurn moves board gameStage color =
                 Nothing ->
                     False
 
-        --|>
-        --|>
-        --Maybe.map
-        --|> Board.anchorAt board
-        --|> lastMove.to
         pieceOutOfBounds =
             Board.pieceOutOfBounds board
 
@@ -183,8 +169,6 @@ handleEndTurn moves board gameStage color =
 handleDrag : Model -> DragState.Drag -> DragState.Model -> Model
 handleDrag model drag dragState =
     let
-        --dx = (to.x - from.x)//model.gridSize
-        --dy = (to.y - from.y)//model.gridSize
         mapXY =
             Orientation.mapXY model.orientation
 
