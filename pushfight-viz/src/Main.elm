@@ -5,13 +5,14 @@ import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Json.Decode as Decode exposing (Value)
+import Page.Blank as Blank
 import Page.Home as Home
 import Page.Login as Login
 import Page.NotFound as NotFound
-import Page.Register as Register
-import Page.Blank as Blank
-import Page.Settings as Settings
 import Page.PlayingGame as PlayingGame
+import Page.Register as Register
+import Page.Settings as Settings
+import Pushfight.Game
 import Route exposing (Route)
 import Session exposing (Session)
 import Task
@@ -19,10 +20,9 @@ import Time
 import Url exposing (Url)
 import Username exposing (Username)
 
-import Pushfight.Game
+
+
 --import Pushfight.DragState
-
-
 -- NOTE: Based on discussions around how asset management features
 -- like code splitting and lazy loading have been shaping up, it's possible
 -- that most of this file may become unnecessary in a future release of Elm.
@@ -59,19 +59,21 @@ view model =
     let
         viewPage toMsg config =
             let
-                { title, content } = config
+                { title, content } =
+                    config
             in
-                { title = title
-                , body = [Html.map toMsg content]
-                }
-            --Html.map toMsg content
+            { title = title
+            , body = [ Html.map toMsg content ]
+            }
+
+        --Html.map toMsg content
     in
     case model of
         Redirect _ ->
-            viewPage (\()->NoOp) Blank.view
+            viewPage (\() -> NoOp) Blank.view
 
         NotFound _ ->
-            viewPage (\()->NoOp) NotFound.view
+            viewPage (\() -> NoOp) NotFound.view
 
         Settings settings ->
             viewPage GotSettingsMsg (Settings.view settings)
@@ -87,6 +89,7 @@ view model =
 
         PlayingGame game ->
             viewPage GotPlayingGameMsg (PlayingGame.view game)
+
 
 
 -- UPDATE
@@ -164,6 +167,7 @@ changeRouteTo maybeRoute model =
         Just (Route.PlayingGame gameId) ->
             PlayingGame.init session gameId
                 |> updateWith PlayingGame GotPlayingGameMsg model
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -271,7 +275,6 @@ main =
     --    , update = update
     --    , view = view
     --    }
-
     Api.application
         { init = init
         , onUrlChange = ChangedUrl

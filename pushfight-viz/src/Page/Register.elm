@@ -11,9 +11,10 @@ import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
+
+
+
 --import Endpoint exposing (post, register)
-
-
 -- MODEL
 
 
@@ -166,9 +167,11 @@ update msg model =
 
         CompletedRegister (Err error) ->
             let
-                serverErrors = []
-                    --Api.decodeErrors error
-                    --    |> List.map ServerError
+                serverErrors =
+                    []
+
+                --Api.decodeErrors error
+                --    |> List.map ServerError
             in
             ( { model | problems = List.append model.problems serverErrors }
             , Cmd.none

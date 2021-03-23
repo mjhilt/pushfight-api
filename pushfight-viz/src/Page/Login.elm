@@ -4,6 +4,7 @@ module Page.Login exposing (Model, Msg, init, subscriptions, toSession, update, 
 -}
 
 import Api exposing (Cred)
+import Base64
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -14,7 +15,6 @@ import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
-import Base64
 
 
 
@@ -290,8 +290,7 @@ login (Trimmed form) =
                 [ ( "user", Encode.string form.email )
                 , ( "password", Encode.string (Base64.encode form.password) )
                 ]
-            |> Http.jsonBody
-
+                |> Http.jsonBody
     in
     Api.login body CompletedLogin
 

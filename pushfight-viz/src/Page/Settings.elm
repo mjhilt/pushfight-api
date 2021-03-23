@@ -2,16 +2,17 @@ module Page.Settings exposing (Model, Msg, init, subscriptions, toSession, updat
 
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
-
 import Route exposing (Route)
 import Session exposing (Session)
 
 
+
 -- Model
+
 
 type alias Model =
     { session : Session
-    , notifications: Bool
+    , notifications : Bool
     }
 
 
@@ -23,7 +24,10 @@ init session =
     , Cmd.none
     )
 
+
+
 -- UPDATE
+
 
 type Msg
     = ToggleNotifications
@@ -32,11 +36,13 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    ToggleNotifications ->
-      ( { model | notifications = not model.notifications}, Cmd.none)
-    GotSession session ->
-      ( { model | session = session}, Cmd.none)
+    case msg of
+        ToggleNotifications ->
+            ( { model | notifications = not model.notifications }, Cmd.none )
+
+        GotSession session ->
+            ( { model | session = session }, Cmd.none )
+
 
 
 -- VIEW
@@ -50,13 +56,15 @@ view model =
             buttonText =
                 if model.notifications then
                     "Disable Notifications"
+
                 else
                     "Enable Notifications"
         in
-          div []
+        div []
             [ button [ onClick ToggleNotifications ] [ text "-" ]
             ]
     }
+
 
 
 -- SUBSCRIPTIONS

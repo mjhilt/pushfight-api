@@ -31,7 +31,7 @@ parser =
         , Parser.map Logout (s "logout")
         , Parser.map Settings (s "settings")
         , Parser.map Register (s "register")
-        , Parser.map PlayingGame (s "game" </> Parser.string )
+        , Parser.map PlayingGame (s "game" </> Parser.string)
         ]
 
 

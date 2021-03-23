@@ -1,4 +1,3 @@
-
 module Username exposing (Username, decoder, encode, toHtml, toString, urlParser)
 
 import Html exposing (Html)

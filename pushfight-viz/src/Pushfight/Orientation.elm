@@ -8,27 +8,33 @@ type Orientation
     | TwoSeventy
 
 
-mapXY: Orientation -> Int -> Int -> (Int, Int)
+mapXY : Orientation -> Int -> Int -> ( Int, Int )
 mapXY orientation x y =
     case orientation of
         Zero ->
-            (x, y)
+            ( x, y )
+
         Ninety ->
-            (9 - y, x)
+            ( 9 - y, x )
+
         OneEighty ->
-            (9 - x, 3 - y)
+            ( 9 - x, 3 - y )
+
         TwoSeventy ->
-            (y, 3 - x)
+            ( y, 3 - x )
 
 
-rmapXY: Orientation -> Int -> Int -> (Int, Int)
+rmapXY : Orientation -> Int -> Int -> ( Int, Int )
 rmapXY orientation x y =
     case orientation of
         Zero ->
-            (x, y)
+            ( x, y )
+
         Ninety ->
-            (y, 9 - x)
+            ( y, 9 - x )
+
         OneEighty ->
-            (9 - x, 3 - y)
+            ( 9 - x, 3 - y )
+
         TwoSeventy ->
-            (3 - y, x)
+            ( 3 - y, x )
