@@ -205,7 +205,7 @@ class Tiny(Base):
         else:
             doc_id = table.insert(value)
             def add_id(doc):
-                doc['_id'] = doc_id
+                doc['_id'] = _id
             table.update(add_id, doc_ids=[doc_id])
 
         return table.get(doc_id=doc_id)
@@ -228,6 +228,7 @@ class Tiny(Base):
             table = self.USERS
         elif bucket == 'games':
             table = self.GAMES
+        # print(table.all())
         return table.search(where(key) == value)
 
 db = Tiny()

@@ -65,21 +65,21 @@ def get_game_uuid(game):
     # print(games)
     # return games[gid]
 
-class Game(object):
-    def __init__(self, user, name):
-        self.id = get_game_uuid(self)
-        self.status = 'waiting'
-        self.players = [user]
-        self.name = name
+# class Game(object):
+#     def __init__(self, user, name):
+#         self.id = get_game_uuid(self)
+#         self.status = 'waiting'
+#         self.players = [user]
+#         self.name = name
 
-    def join(self, user):
-        self.players.append(user)
-        self.status = 'started'
-        self.board = init_board()
+#     def join(self, user):
+#         self.players.append(user)
+#         self.status = 'started'
+#         self.board = init_board()
 
-        # Pick player colors
-        # TODO: Make dict keyed by player id
-        self.colors = random.shuffle([1,2])
+#         # Pick player colors
+#         # TODO: Make dict keyed by player id
+#         self.colors = random.shuffle([1,2])
 
 @b.post('/1/register')
 def register():
@@ -179,17 +179,28 @@ def get_my_games():
 
     # return state
 
+# @b.post('/1/game/status/<game_id>')
 @b.get('/1/game/status')
 @b.auth_basic(_auth_check)
 def game_status():
+# def game_status(game_id):
+    # print('ere')
     user,_ = b.request.auth
-    body = b.request.json
-    print(user)
-    print(body)
-    print(b.request)
-    print('ere')
-    game_id = body.game
+    # body = b.request.json
+    # print(user)
+    # print(b.request.json)
+    # body = b.request.body.read()
+    # print(body)
+    # print('ere')
+    # game_id = body.game
+    # game_id = b.request.query['game']
+    # for k,v in b.request.query.items():
+    #     print(k,v)
+    game_id = b.request.query.game
+    # print(game_id)
+    # print('#############')
     games = db.find('games', game_id)
+    # print(games)
     if len(games) == 0:
         b.abort(404, "No such game")
         return
@@ -200,10 +211,11 @@ def game_status():
         return
 
     color = 'white' if user == game['white_player'] else 'black'
-    latest = game.turns[-1]
+    latest = game['turns'][-1]
+    print('^^^^^', latest)
     ret = {
         "game": game['_id'],
-        'board': latest['endBoard'],
+        'board': latest['board'],
         'gameStage': latest['gameStage'],
         'request': game['request'],
         'color': color,
@@ -228,8 +240,8 @@ def make_game(user1, user2, color='white', timed=False):
     return {
             "_id": _id,
             # "state": init_board(),
-            # "white_player": user1 if color == 'white' else user2,
-            # "black_player": user2 if color == 'white' else user1,
+            "white_player": user1 if color == 'white' else user2,
+            "black_player": user2 if color == 'white' else user1,
             # "white_setup": None,
             # "black_setup": None,
             "turns": [turn],
@@ -248,6 +260,7 @@ def post_challenge():
         break
     if opponent is None:
         b.abort(404, "No such opponent")
+        return
     return start_impl(opponent=opponent)
 
 
@@ -266,15 +279,20 @@ def start_impl(opponent=None):
 
     # TODO: This is really dumb that we look up the user to check the cookie
     #       but then look it up again here. We should fix that.
-    for rec in db.find('users', username, key='email'):
-        user = rec
-        break
+    # user = None
+    # for rec in db.find('users', username, key='email'):
+    #     user = rec
+    #     break
+    # if user is None:
+    #     print("Failed to find user")
+    #     b.abort(404, "Failed to find user")
+    #     return
     # color = body.color
     if "color" not in body or body.color not in ["white", "black"]:
         color = random.choice(["white", "black"])
     else:
         color = body.color
-
+    # print('wakka', color)
     # if color not in
     # try:
     #     color = body.color
@@ -287,7 +305,7 @@ def start_impl(opponent=None):
         timed = False
 
     game = make_game(username, opponent, color=color, timed=timed)
-    # print(game)
+    print(game)
     db.put('games', game)
     return {
         "game": game['_id'],
@@ -298,44 +316,45 @@ def start_impl(opponent=None):
         # "timer": None, # TODO
     }
 
-def find_open_game():
-    for gid, game in games.items():
-        if len(game.players) == 1:
-            return gid, game
-    return None, None
+# def find_open_game():
+#     for gid, game in games.items():
+#         if len(game.players) == 1:
+#             return gid, game
+#     return None, None
 
-@b.get('/1/game/start')
-def gameStart_1():
-    # Query options: join=`<bool>`, user=`<uuid>`
-    # Returns: {game: `<uuid>`, user: `<uuid>`, status: "waiting"|"started", [state: `<boardState>`, color: "white"|"black"]}
-    print(b.request.query)
+# @b.get('/1/game/start')
+# def gameStart_1():
+#     # Query options: join=`<bool>`, user=`<uuid>`
+#     # Returns: {game: `<uuid>`, user: `<uuid>`, status: "waiting"|"started", [state: `<boardState>`, color: "white"|"black"]}
+#     print(b.request.query)
 
-    user = b.request.query.user
-    if user:
-        if user != b.request.get_cookie("user", secret=session_key):
-            b.abort(401, "Bad cookie")
-    else:
-        user = new_anonymous_user()
+#     user = b.request.query.user
+#     if user:
+#         if user != b.request.get_cookie("user", secret=session_key):
+#             b.abort(401, "Bad cookie")
+#     else:
+#         user = new_anonymous_user()
 
-    retval = {}
-    game = None
-    if b.request.query.join:
-        _, game = find_open_game()
+#     retval = {}
+#     game = None
+#     if b.request.query.join:
+#         _, game = find_open_game()
 
-    if game is None:
-        game = start_new_game(user)
+#     if game is None:
+#         game = start_new_game(user)
 
-    retval = {
-        "game": game.id,
-        "user": user,
-        # "status": game.status,
-        'color': game.color[user],
-    }
-    # if game.status != 'waitingforplayers':
-    #     retval['state'] = game.board
-    #     retval['color'] = game.color[user]
+#     retval = {
+#         "game": game.id,
+#         "user": user,
+#         # "status": game.status,
+#         'color': game.color[user],
+#     }
+#     # db.out
+#     # if game.status != 'waitingforplayers':
+#     #     retval['state'] = game.board
+#     #     retval['color'] = game.color[user]
 
-    return retval
+#     return retval
 
 
 @b.post('/1/game/join')
@@ -408,6 +427,7 @@ def post_move():
         # game['turns'].append(turn)
     if game['turns'][-1]['board'] == body.startBoard:
         game['turns'].append(turn)
+        db.put('games', game)
         return {
             "game": game['_id'],
             "board": game['turns'][-1]['board'],
