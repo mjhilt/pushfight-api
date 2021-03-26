@@ -246,11 +246,17 @@ encodeGameStart gc =
 gameInfoDecoder : Decoder GameInfo
 gameInfoDecoder =
     Decode.map5 GameInfo
-        (field "color" Color.decode)
+        (Color.decode)
         (field "game" string)
-        (field "gameStage" GameStage.decode)
-        (field "request" Request.decode)
+        (GameStage.decode)
+        (Request.decode)
         (field "board" Board.decode)
+
+        --(field "color" Color.decode)
+        --(field "game" string)
+        --(field "gameStage" GameStage.decode)
+        --(field "request" Request.decode)
+        --(field "board" Board.decode)
 
 
 
@@ -310,15 +316,15 @@ move startGameStage board moves finalGameStage finalBoard gameId cred msg =
 
 status : String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
 status gameId cred msg =
-    let
-        body =
-            Encode.object [ ( "game", Encode.string gameId ) ] |> Http.jsonBody
-    in
-    get (Endpoint.gameStatus gameId) body (Just cred) (Http.expectJson msg gameInfoDecoder)
+    --let
+    --    body =
+    --        Encode.object [ ( "game", Encode.string gameId ) ] |> Http.jsonBody
+    --in
+    --post (Endpoint.gameStatus) body (Just cred) (Http.expectJson msg gameInfoDecoder)
 
 
 
---get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
+    get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
 -- PERSISTENCE
 
 

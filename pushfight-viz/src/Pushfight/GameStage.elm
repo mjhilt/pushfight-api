@@ -79,7 +79,7 @@ decode =
 decodeGameStageImpl : String -> Decoder GameStage
 decodeGameStageImpl gs =
     case gs of
-        "WaitingForPlayers" ->
+        "waitingforplayers" ->
             Decode.succeed WaitingForPlayers
 
         "whiteSetup" ->

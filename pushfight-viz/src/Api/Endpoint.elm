@@ -81,8 +81,11 @@ gameStatus :
     String
     -> Endpoint
 gameStatus uuid =
+    --url [ "game", "status", uuid ] [] -- [ Url.Builder.string "game" uuid ]
     url [ "game", "status" ] [ Url.Builder.string "game" uuid ]
-
+--gameStatus : Endpoint
+--gameStatus =
+--    url [ "game", "status" ] []
 
 move : Endpoint
 move =
