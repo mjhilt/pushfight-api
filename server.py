@@ -160,18 +160,76 @@ def get_my_games():
         games += [g["_id"] for g in db.find("games", user, key=key)]
     return {"games": games}
 
+# def _getLatestState(game):
+#     if len(game.turns) == 0:
+#         return make_game()
+#     else:
+#         return game.turns[-1]['endBoard']
+    # if game['black_setup'] is None:
+    #     if game['white_setup'] is None:
+    #         state = make_game()
+    #     else:
+    #         state = game['white_setup']
+    # else:
+    #     if len(game['turns'] == 0):
+    #         state = game['black_setup']
+    #     else:
+    #         state = game['turns'][-1]['finalBoard']
+
+    # return state
+
+@b.get('/1/status')
+@b.auth_basic(_auth_check)
+def game_status():
+    user,_ = b.request.auth
+    game_id = body.gameId
+    games = db.find('games', game_id, key='email')
+    if len(games) == 0:
+        b.abort(404, "No such game")
+        return
+    assert len(games) == 1
+    game = games[0]
+    if user not in [game['white_player'], game['black_player']]:
+        b.abort(404, "User not associated with game")
+        return
+
+    color = 'white' if user == game['white_player'] else 'black'
+    latest = game.turns[-1]
+    ret = {
+        "game": game['_id'],
+        'board': latest['endBoard'],
+        'gameStage': latest['gameStage'],
+        'request': game['request'],
+        'color': color,
+    }
+    # ret = {
+    #     'board': _getLatestState(game),
+    #     'gameStage': game['gameStage'],
+    #     'color': color,
+    #     'request': game['request'],
+    # }
+    return ret
 
 def make_game(user1, user2, color='white', timed=False):
     _id = '{}_{}_{}'.format(user1, user2, int(time.time()))
+    turn = {
+        # 'startBoard': None,
+        # 'startGameStage': None,
+        'moves': [],
+        'gameStage': 'WhiteSetup',
+        'board': init_board(),
+    }
     return {
             "_id": _id,
-            "state": init_board(),
-            "white_player": user1 if color == 'white' else user2,
-            "black_player": user2 if color == 'white' else user1,
-            "white_setup": None,
-            "black_setup": None,
-            "turns": [],
-            "game_status": "setup",
+            # "state": init_board(),
+            # "white_player": user1 if color == 'white' else user2,
+            # "black_player": user2 if color == 'white' else user1,
+            # "white_setup": None,
+            # "black_setup": None,
+            "turns": [turn],
+            # 'color': color,
+            # "game_stage": "WhiteSetup",
+            'request': "NoRequest"
         }
 
 
@@ -227,9 +285,11 @@ def start_impl(opponent=None):
     db.put('games', game)
     return {
         "game": game['_id'],
-        "state": game['state'],
+        "board": game['turns'][-1]['board'],
+        "gameStage": game['turns'][-1]['gameStage'],
+        "request": game['request'],
         "color": color,
-        "timer": None, # TODO
+        # "timer": None, # TODO
     }
 
 def find_open_game():
@@ -262,7 +322,8 @@ def gameStart_1():
     retval = {
         "game": game.id,
         "user": user,
-        "status": game.status
+        # "status": game.status,
+        # 'color': game['color']
     }
     if game.status == 'started':
         retval['state'] = game.board
@@ -314,8 +375,43 @@ def get_game_status():
 @b.post('/1/move')
 def post_move():
     body = b.request
-    raise NotImplementedError
-
+    user,_ = b.request.auth
+    game_id = body.gameId
+    games = db.find('games', game_id, key='email')
+    if len(games) == 0:
+        b.abort(404, "No such game")
+        return
+    assert len(games) == 1
+    game = games[0]
+    if user not in [game['white_player'], game['black_player']]:
+        b.abort(404, "User not associated with game")
+        return
+    # if body.startGameStage == 'WhiteSetup':
+    #     game['white_setup'] = body.endBoard
+    # elif body.startGameStage == 'BlackSetup':
+    #     game['white_setup'] = body.endBoard
+    # board = board.board
+    turn = {
+        # 'startBoard': body.startBoard,
+        # 'startGameStage': body.startGameStage,
+        'moves': body.moves,
+        'gameStage': body.endGameStage,
+        'board': body.endBoard,
+    }
+    # if len(game.turns) == 0:
+        # game['turns'].append(turn)
+    if game['turns'][-1]['board'] == body.startBoard:
+        game['turns'].append(turn)
+        return {
+            "game": game['_id'],
+            "board": game['turns'][-1]['board'],
+            "gameStage": game['turns'][-1]['gameStage'],
+            "request": game['request'],
+            "color": color,
+        }
+    else:
+        b.abort(404, "Move does not match")
+        return
 
 DIRNAME = os.path.dirname(os.path.realpath(__file__))
 
