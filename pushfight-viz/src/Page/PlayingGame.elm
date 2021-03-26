@@ -1,7 +1,7 @@
 module Page.PlayingGame exposing (Model, Msg, init, subscriptions, toSession, update, view)
-import Debug
 
 import Api exposing (Cred)
+import Debug
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -15,11 +15,15 @@ import Route
 import Session exposing (Session)
 import Time
 
+
+
 -- model
+
 
 type alias Model =
     { session : Session
     , gameId : String
+
     --, color : Color
     , game : LoadableGame
     }
@@ -28,7 +32,6 @@ type alias Model =
 type LoadableGame
     = Loading
     | Loaded Game.Model
-
 
 
 init : Session -> String -> ( Model, Cmd Msg )
@@ -52,13 +55,14 @@ view model =
             case model.game of
                 Loading ->
                     Html.text "Loading..."
+
                 Loaded game ->
                     Html.map GotGameMsg (Game.view game)
     in
     { title = "Game " ++ model.gameId
     , content =
         div []
-            [ div [] [pushfight]
+            [ div [] [ pushfight ]
             , div [] [ button [ onClick BackToLobby ] [ text "Back To Lobby" ] ]
             ]
     }
@@ -72,7 +76,7 @@ type Msg
     = BackToLobby
     | GotSession Session
     | GotGameMsg Game.Msg
-    --| GameFromServer Wakka
+      --| GameFromServer Wakka
     | GameFromServer (Result Http.Error Api.GameInfo)
     | CheckServer Time.Posix
     | MovePosted (Result Http.Error ())
@@ -129,13 +133,13 @@ update msg model =
 
         --GameFromServer _ ->
         --    ( model, Cmd.none )
-
         CheckServer _ ->
             case Session.cred model.session of
                 Just cred ->
-                    ( model, Api.status model.gameId cred GameFromServer)
+                    ( model, Api.status model.gameId cred GameFromServer )
+
                 Nothing ->
-                    (model, Cmd.none)
+                    ( model, Cmd.none )
 
         GameFromServer (Ok gameFromServer) ->
             let
@@ -143,42 +147,39 @@ update msg model =
                     case model.game of
                         Loaded game ->
                             { game
-                            | board = gameFromServer.board
-                            , gameStage = gameFromServer.gameStage
-                            , color = gameFromServer.color
+                                | board = gameFromServer.board
+                                , gameStage = gameFromServer.gameStage
+                                , color = gameFromServer.color
                             }
+
                         Loading ->
                             Game.init gameFromServer.board gameFromServer.gameStage gameFromServer.color [] 50 Request.NoRequest
             in
-            ( {model| game = Loaded updatedGame}, Cmd.none)
---init : Board.Board -> GameStage -> Color -> List Move -> Int -> Request -> Model
+            ( { model | game = Loaded updatedGame }, Cmd.none )
 
---type alias Model =
---    { board : Board.Board
---    , gameStage : GameStage
---    , color : Color
---    , orientation : Orientation.Orientation
---    , moves : List Move
---    , dragState : DragState.Model
---    , gridSize : Int
---    , request : Request
---    }
-            --let
-            --    gameState = Loaded
-            --        { 
-
-            --        }
-            --( model,  )
-
+        --init : Board.Board -> GameStage -> Color -> List Move -> Int -> Request -> Model
+        --type alias Model =
+        --    { board : Board.Board
+        --    , gameStage : GameStage
+        --    , color : Color
+        --    , orientation : Orientation.Orientation
+        --    , moves : List Move
+        --    , dragState : DragState.Model
+        --    , gridSize : Int
+        --    , request : Request
+        --    }
+        --let
+        --    gameState = Loaded
+        --        {
+        --        }
+        --( model,  )
         GameFromServer (Err error) ->
-            Debug.log (String.join " | " (Api.decodeErrors error)) (model, Cmd.none)
-
-
-            --case model.game of
-            --    Loading ->
+            Debug.log (String.join " | " (Api.decodeErrors error)) ( model, Cmd.none )
 
 
 
+--case model.game of
+--    Loading ->
 -- SUBSCRIPTIONS
 
 

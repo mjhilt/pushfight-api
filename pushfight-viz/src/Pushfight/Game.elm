@@ -311,6 +311,7 @@ view model =
             case model.gameStage of
                 WaitingForPlayers ->
                     "Waiting For Players"
+
                 WhiteSetup ->
                     "White Setup"
 
