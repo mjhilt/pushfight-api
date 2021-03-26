@@ -61,8 +61,9 @@ def get_game_uuid(game):
     print('No slots available! Panic!', file=sys.stderr)
 
 
-def find_game_by_id(gid):
-    return games[gid]
+# def find_game_by_id(gid):
+    # print(games)
+    # return games[gid]
 
 class Game(object):
     def __init__(self, user, name):
@@ -141,7 +142,7 @@ def get_open_games():
     # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
     game_data = []
     # TODO: should limit the number of returned results
-    for g in db.find("games", "waiting_for_players", key="game_status"):
+    for g in db.find("games", "waitingforplayers", key="game_status"):
         opponent = g["white_player"]
         game_data.append({
             "game": g["_id"],
@@ -178,12 +179,17 @@ def get_my_games():
 
     # return state
 
-@b.get('/1/status')
+@b.get('/1/game/status')
 @b.auth_basic(_auth_check)
 def game_status():
     user,_ = b.request.auth
-    game_id = body.gameId
-    games = db.find('games', game_id, key='email')
+    body = b.request.json
+    print(user)
+    print(body)
+    print(b.request)
+    print('ere')
+    game_id = body.game
+    games = db.find('games', game_id)
     if len(games) == 0:
         b.abort(404, "No such game")
         return
@@ -216,7 +222,7 @@ def make_game(user1, user2, color='white', timed=False):
         # 'startBoard': None,
         # 'startGameStage': None,
         'moves': [],
-        'gameStage': 'WhiteSetup',
+        'gameStage': 'whitesetup' if user2 is not None else 'waitingforplayers',
         'board': init_board(),
     }
     return {
@@ -323,11 +329,11 @@ def gameStart_1():
         "game": game.id,
         "user": user,
         # "status": game.status,
-        # 'color': game['color']
+        'color': game.color[user],
     }
-    if game.status == 'started':
-        retval['state'] = game.board
-        retval['color'] = game.color[user]
+    # if game.status != 'waitingforplayers':
+    #     retval['state'] = game.board
+    #     retval['color'] = game.color[user]
 
     return retval
 
@@ -362,14 +368,14 @@ def post_game_join():
     }
 
 
-@b.get('/1/game/status')
-def get_game_status():
-    gid = b.request.query.game
-    game = find_game_by_id(gid)
-    if game:
-        return game.status
-    else:
-        b.abort(404, '{} not found'.format(gid))
+# @b.get('/1/game/status')
+# def get_game_status():
+#     gid = b.request.query.game
+#     game = db.find('games', gid)
+#     if game:
+#         # return game.status
+#     else:
+#         b.abort(404, '{} not found'.format(gid))
 
 
 @b.post('/1/move')
