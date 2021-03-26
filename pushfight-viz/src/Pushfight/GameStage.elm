@@ -5,7 +5,8 @@ import Json.Encode as Encode
 
 
 type GameStage
-    = WhiteSetup
+    = WaitingForPlayers
+    | WhiteSetup
     | BlackSetup
     | WhiteTurn
     | BlackTurn
@@ -78,6 +79,9 @@ decode =
 decodeGameStageImpl : String -> Decoder GameStage
 decodeGameStageImpl gs =
     case gs of
+        "WaitingForPlayers" ->
+            Decode.succeed WaitingForPlayers
+
         "whiteSetup" ->
             Decode.succeed WhiteSetup
 
@@ -108,6 +112,9 @@ decodeGameStageImpl gs =
 encode : GameStage -> Encode.Value
 encode gs =
     case gs of
+        WaitingForPlayers ->
+            Encode.string "waitingforplayers"
+
         WhiteSetup ->
             Encode.string "whiteSetup"
 

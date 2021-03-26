@@ -169,13 +169,13 @@ type alias GameChallenge =
     }
 
 
-challenge : GameChallenge -> (Result Http.Error GameInfo -> msg) -> Cred -> Cmd msg
+challenge : GameChallenge -> (Result Http.Error String -> msg) -> Cred -> Cmd msg
 challenge gc msg cred =
     let
         body =
             gc |> encodeChallenge |> Http.jsonBody
     in
-    post Endpoint.gameChallenge body (Just cred) (Http.expectJson msg gameInfoDecoder)
+    post Endpoint.gameChallenge body (Just cred) (Http.expectJson msg (Decode.field "game" Decode.string))
 
 
 encodeChallenge : GameChallenge -> Encode.Value
@@ -212,13 +212,13 @@ type alias GameInfo =
     }
 
 
-start : GameChallenge -> (Result Http.Error GameInfo -> msg) -> Cred -> Cmd msg
+start : GameChallenge -> (Result Http.Error String -> msg) -> Cred -> Cmd msg
 start gc msg cred =
     let
         body =
             gc |> encodeGameStart |> Http.jsonBody
     in
-    post Endpoint.gameStart body (Just cred) (Http.expectJson msg gameInfoDecoder)
+    post Endpoint.gameStart body (Just cred) (Http.expectJson msg (Decode.field "game" Decode.string))
 
 
 encodeGameStart : GameChallenge -> Encode.Value
@@ -309,9 +309,11 @@ move startGameStage board moves finalGameStage finalBoard gameId cred msg =
 
 status : String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
 status gameId cred msg =
-    --let
-    --    --body 
-    get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
+    let
+        body = Encode.object [("game", Encode.string gameId)] |> Http.jsonBody
+    in
+    get (Endpoint.gameStatus gameId) body (Just cred) (Http.expectJson msg gameInfoDecoder)
+    --get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
 -- PERSISTENCE
 
 

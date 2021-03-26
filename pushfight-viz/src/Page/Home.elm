@@ -153,7 +153,7 @@ type Msg
     | ToggleTimed
     | UpdateOpponent String
     | GotSession Session
-    | GotGameData (Result Http.Error Api.GameInfo)
+    | GotGameData (Result Http.Error String)
     | GotOpenGames (Result Http.Error (List Api.OpenGame))
     | GotMyGames (Result Http.Error (List String))
     | GoToGame String
@@ -241,8 +241,8 @@ update msg model =
         Refresh ->
             ( model, refresh (Session.cred model.session) )
 
-        GotGameData (Ok game) ->
-            ( model, Route.replaceUrl (Session.navKey model.session) (Route.PlayingGame game.gameId) )
+        GotGameData (Ok gameId) ->
+            ( model, Route.replaceUrl (Session.navKey model.session) (Route.PlayingGame gameId) )
 
         GotGameData (Err error) ->
             let

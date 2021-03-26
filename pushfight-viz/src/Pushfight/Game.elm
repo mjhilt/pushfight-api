@@ -309,26 +309,28 @@ view model =
 
         title =
             case model.gameStage of
+                WaitingForPlayers ->
+                    "Waiting For Players"
                 WhiteSetup ->
-                    "WhiteSetup"
+                    "White Setup"
 
                 BlackSetup ->
-                    "BlackSetup"
+                    "Black Setup"
 
                 WhiteTurn ->
-                    "WhiteTurn, " ++ String.fromInt (2 - List.length model.moves) ++ " moves left"
+                    "White Turn, " ++ String.fromInt (2 - List.length model.moves) ++ " moves left"
 
                 BlackTurn ->
-                    "BlackTurn, " ++ String.fromInt (2 - List.length model.moves) ++ " moves left"
+                    "Black Turn, " ++ String.fromInt (2 - List.length model.moves) ++ " moves left"
 
                 WhiteWon ->
-                    "WhiteWon"
+                    "White Won - Game Over"
 
                 BlackWon ->
-                    "BlackWon"
+                    "Black Won - Game Over"
 
                 Draw ->
-                    "Draw"
+                    "Draw - Game Over"
     in
     Html.div []
         [ Html.text title
