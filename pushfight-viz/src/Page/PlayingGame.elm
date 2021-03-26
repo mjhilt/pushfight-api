@@ -1,7 +1,5 @@
 module Page.PlayingGame exposing (Model, Msg, init, subscriptions, toSession, update, view)
-
---import Html.Events exposing (onInput)
---import Pushfight.Color exposing (Color(..))
+import Debug
 
 import Api exposing (Cred)
 import Html exposing (..)
@@ -15,16 +13,19 @@ import Pushfight.Move as Move exposing (Move)
 import Pushfight.Request as Request exposing (Request)
 import Route
 import Session exposing (Session)
+import Time
 
+-- model
 
 type alias Model =
     { session : Session
     , gameId : String
-    , gameState : GameState
+    --, color : Color
+    , game : LoadableGame
     }
 
 
-type GameState
+type LoadableGame
     = Loading
     | Loaded Game.Model
 
@@ -34,7 +35,7 @@ init : Session -> String -> ( Model, Cmd Msg )
 init session gameId =
     ( { session = session
       , gameId = gameId
-      , gameState = Loading
+      , game = Loading
       }
     , Cmd.none
     )
@@ -46,10 +47,18 @@ init session gameId =
 
 view : Model -> { title : String, content : Html Msg }
 view model =
+    let
+        pushfight =
+            case model.game of
+                Loading ->
+                    Html.text "Loading..."
+                Loaded game ->
+                    Html.map GotGameMsg (Game.view game)
+    in
     { title = "Game " ++ model.gameId
     , content =
         div []
-            [ div [] [ text "Let's play some pushfight!" ]
+            [ div [] [pushfight]
             , div [] [ button [ onClick BackToLobby ] [ text "Back To Lobby" ] ]
             ]
     }
@@ -59,19 +68,13 @@ view model =
 -- UPDATE
 
 
-type alias Wakka =
-    { board : Board.Board
-    , moves : List Move
-    , gameStage : GameStage
-    , request : Request
-    }
-
-
 type Msg
     = BackToLobby
     | GotSession Session
     | GotGameMsg Game.Msg
-    | GameFromServer Wakka
+    --| GameFromServer Wakka
+    | GameFromServer (Result Http.Error Api.GameInfo)
+    | CheckServer Time.Posix
     | MovePosted (Result Http.Error ())
 
 
@@ -85,7 +88,7 @@ update msg model =
             ( { model | session = session }, Cmd.none )
 
         GotGameMsg gmsg ->
-            case model.gameState of
+            case model.game of
                 Loading ->
                     ( model, Cmd.none )
 
@@ -119,13 +122,60 @@ update msg model =
                                 SendAcceptTakeback ->
                                     Cmd.none
                     in
-                    ( { model | gameState = Loaded newGame }, gameCmd )
+                    ( { model | game = Loaded newGame }, gameCmd )
 
         MovePosted _ ->
             ( model, Cmd.none )
 
-        GameFromServer _ ->
-            ( model, Cmd.none )
+        --GameFromServer _ ->
+        --    ( model, Cmd.none )
+
+        CheckServer _ ->
+            case Session.cred model.session of
+                Just cred ->
+                    ( model, Api.status model.gameId cred GameFromServer)
+                Nothing ->
+                    (model, Cmd.none)
+
+        GameFromServer (Ok gameFromServer) ->
+            let
+                updatedGame =
+                    case model.game of
+                        Loaded game ->
+                            { game
+                            | board = gameFromServer.board
+                            , gameStage = gameFromServer.gameStage
+                            , color = gameFromServer.color
+                            }
+                        Loading ->
+                            Game.init gameFromServer.board gameFromServer.gameStage gameFromServer.color [] 50 Request.NoRequest
+            in
+            ( {model| game = Loaded updatedGame}, Cmd.none)
+--init : Board.Board -> GameStage -> Color -> List Move -> Int -> Request -> Model
+
+--type alias Model =
+--    { board : Board.Board
+--    , gameStage : GameStage
+--    , color : Color
+--    , orientation : Orientation.Orientation
+--    , moves : List Move
+--    , dragState : DragState.Model
+--    , gridSize : Int
+--    , request : Request
+--    }
+            --let
+            --    gameState = Loaded
+            --        { 
+
+            --        }
+            --( model,  )
+
+        GameFromServer (Err error) ->
+            Debug.log (String.join " | " (Api.decodeErrors error)) (model, Cmd.none)
+
+
+            --case model.game of
+            --    Loading ->
 
 
 
@@ -137,6 +187,7 @@ subscriptions model =
     Sub.batch
         [ Session.changes GotSession (Session.navKey model.session)
         , Sub.map GotGameMsg Game.subscriptions
+        , Time.every 1000 CheckServer
         ]
 
 

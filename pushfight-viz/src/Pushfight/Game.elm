@@ -121,8 +121,6 @@ doMoves moves board =
                     Nothing
 
 
-
-
 handleEndTurn : List Move -> Board.Board -> GameStage -> Color -> Maybe ( Board.Board, GameStage )
 handleEndTurn moves board gameStage color =
     let

@@ -12,10 +12,10 @@ type Color
 decodeColorImpl : String -> Decoder Color
 decodeColorImpl request =
     case request of
-        "White" ->
+        "white" ->
             Decode.succeed White
 
-        "Black" ->
+        "black" ->
             Decode.succeed Black
 
         other ->
@@ -32,7 +32,7 @@ encode : Color -> Encode.Value
 encode request =
     case request of
         White ->
-            Encode.string "White"
+            Encode.string "white"
 
         Black ->
-            Encode.string "Black"
+            Encode.string "black"

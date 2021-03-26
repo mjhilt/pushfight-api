@@ -1,4 +1,4 @@
-port module Api exposing (Cred, GameChallenge, GameInfo, OpenGame, application, challenge, credChanges, decodeErrors, login, logout, move, mygames, opengames, register, start, storeCred, username)
+port module Api exposing (Cred, GameChallenge, GameInfo, OpenGame, application, challenge, credChanges, decodeErrors, login, logout, move, mygames, opengames, register, start, storeCred, username, status)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
@@ -9,11 +9,13 @@ import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, string)
 import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 import Json.Encode as Encode
-import Pushfight.Board as Board
-import Pushfight.Color exposing (Color(..))
-import Pushfight.GameStage as GameStage
-import Pushfight.Move as Move
-import Pushfight.Request as Request
+
+import Pushfight.Board as Board exposing (Board)
+import Pushfight.Color as Color exposing (Color(..))
+import Pushfight.GameStage as GameStage exposing (GameStage)
+import Pushfight.Move as Move exposing (Move)
+import Pushfight.Request as Request exposing (Request)
+
 import Url exposing (Url)
 import Username exposing (Username)
 
@@ -173,7 +175,7 @@ challenge gc msg cred =
         body =
             gc |> encodeChallenge |> Http.jsonBody
     in
-    post Endpoint.gameChallenge body (Just cred) (Http.expectJson msg gameDecoder)
+    post Endpoint.gameChallenge body (Just cred) (Http.expectJson msg gameInfoDecoder)
 
 
 encodeChallenge : GameChallenge -> Encode.Value
@@ -204,6 +206,9 @@ encodeChallenge gc =
 type alias GameInfo =
     { color : Color
     , gameId : String
+    , gameStage: GameStage
+    , request: Request
+    , board: Board
     }
 
 
@@ -213,7 +218,7 @@ start gc msg cred =
         body =
             gc |> encodeGameStart |> Http.jsonBody
     in
-    post Endpoint.gameStart body (Just cred) (Http.expectJson msg gameDecoder)
+    post Endpoint.gameStart body (Just cred) (Http.expectJson msg gameInfoDecoder)
 
 
 encodeGameStart : GameChallenge -> Encode.Value
@@ -240,27 +245,26 @@ encodeGameStart gc =
 -- TODO actually decode pushfight & timer state
 
 
-gameDecoder : Decoder GameInfo
-gameDecoder =
-    Decode.map2 GameInfo
-        (field "color" (Decode.map parseColor string))
+gameInfoDecoder : Decoder GameInfo
+gameInfoDecoder =
+    Decode.map5 GameInfo
+        (field "color" Color.decode)
         (field "game" string)
-
-
-parseColor : String -> Color
-parseColor color =
-    case color of
-        "white" ->
-            White
-
-        "black" ->
-            Black
-
-        _ ->
-            White
+        (field "gameStage" GameStage.decode)
+        (field "request" Request.decode)
+        (field "board" Board.decode)
 
 
 
+--parseColor : String -> Color
+--parseColor color =
+--    case color of
+--        "white" ->
+--            White
+--        "black" ->
+--            Black
+--        _ ->
+--            White
 -- join game
 
 
@@ -270,7 +274,7 @@ join gid msg cred =
         body =
             Encode.object [ ( "game", Encode.string gid ) ] |> Http.jsonBody
     in
-    post Endpoint.gameJoin body (Just cred) (Http.expectJson msg gameDecoder)
+    post Endpoint.gameJoin body (Just cred) (Http.expectJson msg gameInfoDecoder)
 
 
 
@@ -292,10 +296,22 @@ move startGameStage board moves finalGameStage finalBoard gameId cred msg =
                 ]
                 |> Http.jsonBody
     in
-    post Endpoint.move body (Just cred) (Http.expectWhatever msg)
+    post Endpoint.move body (Just cred) (Http.expectWhatever msg) -- (Http.expectWhatever msg gameInfoDecoder)
 
 
+--type alias PushfightStatus =
+--    { board : Board.Board
+--    --, moves : List Move
+--    , gameStage : GameStage
+--    , request : Request
+--    , color : Color
+--    }
 
+status : String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
+status gameId cred msg =
+    --let
+    --    --body 
+    get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
 -- PERSISTENCE
 
 

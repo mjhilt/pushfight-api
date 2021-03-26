@@ -43,95 +43,47 @@ url paths queryParams =
 
 
 login : Endpoint
-
-
-
--- POST
-
-
 login =
     url [ "login" ] []
 
 
 register : Endpoint
-
-
-
--- POST
-
-
 register =
     url [ "register" ] []
 
 
 opengames : Endpoint
-
-
-
--- GET
-
-
 opengames =
     url [ "opengames" ] []
 
 
 mygames : Endpoint
-
-
-
--- GET
-
-
 mygames =
     url [ "mygames" ] []
 
 
 gameChallenge : Endpoint
-
-
-
--- POST
-
-
 gameChallenge =
     url [ "game", "challenge" ] []
 
 
 gameStart : Endpoint
-
-
-
--- POST
-
-
 gameStart =
     url [ "game", "start" ] []
 
 
 gameJoin : Endpoint
-
-
-
--- POST
-
-
 gameJoin =
     url [ "game", "join" ] []
 
 
 gameStatus :
-    Int
-    -> Endpoint -- GET
+    String
+    -> Endpoint
 gameStatus uuid =
-    url [ "game", "status" ] [ Url.Builder.int "game" uuid ]
+    url [ "game", "status" ] [ Url.Builder.string "game" uuid ]
 
 
 move : Endpoint
-
-
-
--- POST
-
-
 move =
     url [ "move" ] []
