@@ -354,7 +354,7 @@ drawPiece size rmapXY isWhite isPusher ix =
     let
         ( x, y ) =
             Board.ixToXY ix
-
+        ( rx, ry ) = rmapXY x y
         ( color, accentColor ) =
             if isWhite then
                 ( pieceColorWhite, pieceColorBlack )
@@ -363,10 +363,10 @@ drawPiece size rmapXY isWhite isPusher ix =
                 ( pieceColorBlack, pieceColorWhite )
     in
     if isPusher then
-        drawPusher size x y color accentColor
+        drawPusher size rx ry color accentColor
 
     else
-        drawMover size x y color accentColor
+        drawMover size rx ry color accentColor
 
 
 boardColor =
