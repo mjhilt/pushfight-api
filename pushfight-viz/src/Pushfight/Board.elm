@@ -322,10 +322,8 @@ movePiece board from to =
 pushPiece : Board -> Int -> Int -> Maybe Board
 pushPiece board from to =
     let
-        --fromPiece = getPiece board from
-        --toPiece = getPiece board to
         dir =
-            dirFromDelta (from - to)
+            dirFromDelta (to - from)
     in
     case ( isPusher board from, dir ) of
         ( _, Nothing ) ->

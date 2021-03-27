@@ -166,36 +166,43 @@ handleEndTurn moves board gameStage color =
         _ ->
             Nothing
 
-
-handleDrag : Model -> DragState.Drag -> DragState.Model -> Model
-handleDrag model drag dragState =
+getDragFromToIX : Orientation.Orientation -> DragState.Drag -> Int -> Move
+getDragFromToIX orientation drag gridSize =
     let
         mapXY =
-            Orientation.mapXY model.orientation
+            Orientation.mapXY orientation
 
         ( fromX, fromY ) =
-            mapXY (drag.from.x // model.gridSize) (drag.from.y // model.gridSize)
+            mapXY (drag.from.x // gridSize) (drag.from.y // gridSize)
 
         ( toX, toY ) =
-            mapXY (drag.to.x // model.gridSize) (drag.to.y // model.gridSize)
+            mapXY (drag.to.x // gridSize) (drag.to.y // gridSize)
 
         from =
             fromX + 10 * fromY
 
         to =
             toX + 10 * toY
+    in
+        {from=from,to=to}
+
+handleDrag : Model -> DragState.Drag -> DragState.Model -> Model
+handleDrag model drag dragState =
+    let
+
+        newMove = getDragFromToIX model.orientation drag model.gridSize
+        board = doMoves model.moves model.board |> Maybe.withDefault model.board
 
         newMoves =
             case List.reverse model.moves of
                 [] ->
-                    [ { from = from, to = to } ]
+                    [ newMove ]
 
                 lastMove :: otherMoves ->
-                    --if lastMove.to == from then
-                    --    List.append (List.reverse otherMoves) [ { from = lastMove.from, to = to } ]
-
-                    --else
-                        List.append model.moves [ { from = from, to = to } ]
+                    if lastMove.to == newMove.from && board.anchor /= Just lastMove.to then
+                        List.append (List.reverse otherMoves) [ newMove ]
+                    else
+                        List.append model.moves [ newMove ]
 
         isValid = True
             --(Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
@@ -308,8 +315,7 @@ view model =
             drawBoard model.gridSize rmapXY
 
         width =
-            --String.fromInt (4 * model.gridSize)
-            String.fromInt (10 * model.gridSize)
+            String.fromInt (4 * model.gridSize)
 
         height =
             String.fromInt (10 * model.gridSize)
@@ -352,6 +358,7 @@ view model =
             , Svg.Attributes.height height
             , Svg.Attributes.viewBox <| "0 0 " ++ width ++ " " ++ height
             --, Mouse.onDown ( \event -> (DragMsg (DragState.MouseDown {x=round event.offsetPos.x, y=round event.offsetPos.y})) )
+            , Mouse.onMove (eventHelper DragState.MouseMove)
             , Mouse.onDown (eventHelper DragState.MouseDown)
             , Mouse.onUp (eventHelper DragState.MouseUp)
             --, Touch.onStart (eventHelper DragState.MouseDown)
