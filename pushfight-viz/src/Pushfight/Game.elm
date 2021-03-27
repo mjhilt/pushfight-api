@@ -1,6 +1,9 @@
 module Pushfight.Game exposing (Model, Msg, OutMsg(..), init, subscriptions, update, view)
 
 import Html
+import Html.Events.Extra.Mouse as Mouse
+import Html.Events.Extra.Touch as Touch
+
 import Pushfight.Board as Board
 import Pushfight.Color exposing (Color(..))
 import Pushfight.DragState as DragState
@@ -62,7 +65,7 @@ type Msg
     = DragMsg DragState.Msg
     | EndTurn
     | Undo
-    | AskForTakeBack
+    | RequestTakeBack
     | OfferDraw
     | AcceptTakeback
     | AcceptDraw
@@ -188,14 +191,14 @@ handleDrag model drag dragState =
                     [ { from = from, to = to } ]
 
                 lastMove :: otherMoves ->
-                    if lastMove.to == from then
-                        List.append (List.reverse otherMoves) [ { from = lastMove.from, to = to } ]
+                    --if lastMove.to == from then
+                    --    List.append (List.reverse otherMoves) [ { from = lastMove.from, to = to } ]
 
-                    else
+                    --else
                         List.append model.moves [ { from = from, to = to } ]
 
-        isValid =
-            (Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
+        isValid = True
+            --(Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
     in
     case ( isValid, doMoves newMoves model.board ) of
         ( True, Just _ ) ->
@@ -236,7 +239,7 @@ update msg model =
         Undo ->
             ( undoMove model, SendNoOp )
 
-        AskForTakeBack ->
+        RequestTakeBack ->
             ( { model | request = TakebackRequested }, SendRequestTakeback )
 
         OfferDraw ->
@@ -255,7 +258,8 @@ update msg model =
 
 subscriptions : Sub Msg
 subscriptions =
-    Sub.map DragMsg DragState.subscriptions
+    Sub.none
+    --Sub.map DragMsg DragState.subscriptions
 
 
 
@@ -267,24 +271,26 @@ view model =
     let
         rmapXY =
             Orientation.rmapXY model.orientation
-
-        pieces =
+        moveBoard =
+            doMoves model.moves model.board
+            |> Maybe.withDefault model.board
+        piecesViz =
             List.foldl (++)
                 []
-                [ drawPiece model.gridSize rmapXY True True model.board.wp1
-                , drawPiece model.gridSize rmapXY True True model.board.wp2
-                , drawPiece model.gridSize rmapXY True True model.board.wp3
-                , drawPiece model.gridSize rmapXY True False model.board.wm1
-                , drawPiece model.gridSize rmapXY True False model.board.wm2
-                , drawPiece model.gridSize rmapXY False True model.board.bp1
-                , drawPiece model.gridSize rmapXY False True model.board.bp2
-                , drawPiece model.gridSize rmapXY False True model.board.bp3
-                , drawPiece model.gridSize rmapXY False False model.board.bm1
-                , drawPiece model.gridSize rmapXY False False model.board.bm2
+                [ drawPiece model.gridSize rmapXY True True moveBoard.wp1
+                , drawPiece model.gridSize rmapXY True True moveBoard.wp2
+                , drawPiece model.gridSize rmapXY True True moveBoard.wp3
+                , drawPiece model.gridSize rmapXY True False moveBoard.wm1
+                , drawPiece model.gridSize rmapXY True False moveBoard.wm2
+                , drawPiece model.gridSize rmapXY False True moveBoard.bp1
+                , drawPiece model.gridSize rmapXY False True moveBoard.bp2
+                , drawPiece model.gridSize rmapXY False True moveBoard.bp3
+                , drawPiece model.gridSize rmapXY False False moveBoard.bm1
+                , drawPiece model.gridSize rmapXY False False moveBoard.bm2
                 ]
 
-        anchor =
-            case model.board.anchor of
+        anchorViz =
+            case moveBoard.anchor of
                 Just a ->
                     let
                         ( x, y ) =
@@ -298,11 +304,12 @@ view model =
                 Nothing ->
                     []
 
-        board =
+        boardViz =
             drawBoard model.gridSize rmapXY
 
         width =
-            String.fromInt (4 * model.gridSize)
+            --String.fromInt (4 * model.gridSize)
+            String.fromInt (10 * model.gridSize)
 
         height =
             String.fromInt (10 * model.gridSize)
@@ -332,6 +339,11 @@ view model =
 
                 Draw ->
                     "Draw - Game Over"
+        eventHelper msg e =
+            let
+                (x,y) = e.offsetPos
+            in
+            msg {x=floor x,y = floor y} |> DragMsg              
     in
     Html.div []
         [ Html.text title
@@ -339,11 +351,16 @@ view model =
             [ Svg.Attributes.width width
             , Svg.Attributes.height height
             , Svg.Attributes.viewBox <| "0 0 " ++ width ++ " " ++ height
+            --, Mouse.onDown ( \event -> (DragMsg (DragState.MouseDown {x=round event.offsetPos.x, y=round event.offsetPos.y})) )
+            , Mouse.onDown (eventHelper DragState.MouseDown)
+            , Mouse.onUp (eventHelper DragState.MouseUp)
+            --, Touch.onStart (eventHelper DragState.MouseDown)
+            --, Touch.onEnd (eventHelper DragState.MouseUp)
             ]
             (List.concat
-                [ board
-                , pieces
-                , anchor
+                [ boardViz
+                , piecesViz
+                , anchorViz
                 ]
             )
         ]
@@ -436,7 +453,7 @@ drawBoard size rotateXY =
             , 34
             , 35
             , 36
-            , 37
+            --, 37
             ]
 
         boardXY =
@@ -474,8 +491,6 @@ drawPusher size x y color accentColor =
         , Svg.Attributes.y <| String.fromInt <| round (posy + fsize * 0.05)
         , Svg.Attributes.width <| String.fromInt <| round (fsize * 0.9)
         , Svg.Attributes.height <| String.fromInt <| round (fsize * 0.9)
-
-        --, Touch.onStart ( \e -> MouseDownAt (x*size + size//2 |> toFloat, y*size + size//2 |> toFloat) )
         ]
         []
     ]
@@ -499,8 +514,7 @@ drawMover size x y color accentColor =
         , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
         , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
         , Svg.Attributes.r <| String.fromInt <| round ((fsize * 0.95) / 2.0)
-
-        --, Touch.onStart ( \e -> MouseDownAt (x*size + size//2 |> toFloat, y*size + size//2 |> toFloat) )
+        --, Mouse.onDown ( \e -> DragState.MouseDown {x=x*size + size//2, y=y*size + size//2} |> DragMsg)
         ]
         []
     ]

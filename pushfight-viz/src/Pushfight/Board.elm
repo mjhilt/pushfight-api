@@ -36,10 +36,10 @@ dirToInt : Dir -> Int
 dirToInt dir =
     case dir of
         Up ->
-            10
+            -10
 
         Down ->
-            -10
+            10
 
         Left ->
             -1
@@ -56,10 +56,10 @@ dirFromDelta d =
     else if d == -1 then
         Just Left
 
-    else if d == 10 then
+    else if d == -10 then
         Just Up
 
-    else if d == -10 then
+    else if d == 10 then
         Just Down
 
     else
@@ -193,19 +193,18 @@ isBlackPiece board at =
 
 getPushPos : Board -> Int -> Dir -> List Int -> List Int
 getPushPos board start dir pos =
-    if (start < 0) || (start >= 40) then
-        pos
+    --if (start < 0) || (start >= 40) then
+    --    pos
 
+    --else
+    let
+        next =
+            start + dirToInt dir
+    in
+    if isPiece board start then
+        getPushPos board next dir (start :: pos)
     else
-        let
-            next =
-                start + dirToInt dir
-        in
-        if isPiece board next then
-            getPushPos board next dir (start :: pos)
-
-        else
-            pos
+        pos
 
 
 isValidPush : List Int -> Dir -> Bool
@@ -214,6 +213,10 @@ isValidPush pos dir =
         False
 
     else
+        let
+            _ =
+                Debug.log "wakka" (pos, dir)
+        in
         case ( dir, pos ) of
             ( Up, p :: ps ) ->
                 List.member p [ 3, 4, 5, 6, 7 ]
@@ -237,7 +240,7 @@ executePush board pos dir =
             in
             case updatedBoard of
                 Just ub ->
-                    Just { ub | anchor = Just p }
+                    Just { ub | anchor = Just (p+dir) }
 
                 Nothing ->
                     Nothing
