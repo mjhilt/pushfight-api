@@ -251,17 +251,20 @@ def make_game(user1, user2, color='white', timed=False):
         }
 
 
+# This whole API endpoint feels cringy if this were anything more than a group of friends' server
 @b.post('/1/game/challenge')
 @b.auth_basic(_auth_check)
 def post_challenge():
-    opponent = None
-    for rec in db.find('users', body.opponent, key='email'):
-        opponent = rec
-        break
-    if opponent is None:
-        b.abort(404, "No such opponent")
+    body = b.request.json
+    opponent_email = body.get('opponent')
+    if opponent_email is None:
+        b.abort(400, "Opponent not provided")
         return
-    return start_impl(opponent=opponent)
+
+    for rec in db.find('users', opponent_email, key='email'):
+       return start_impl(opponent=opponent_email)
+
+    b.abort(404, "No such opponent")
 
 
 @b.post('/1/game/start')
