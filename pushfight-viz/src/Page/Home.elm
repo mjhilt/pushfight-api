@@ -255,8 +255,18 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-        JoinAndLoadGame gameID ->
-            ( model, Cmd.none )
+        JoinAndLoadGame gameId ->
+            case Session.cred model.session of
+                Just c ->
+                    --let
+                    --    cmd =
+                    --        Cmd.batch
+                    --        [ 
+                    --        ]
+                    --in
+                    ( model,  Api.join gameId GotGameData c)
+                Nothing ->
+                    ( model, Cmd.none )
 
         GotSession session ->
             ( { model | session = session }, Cmd.none )
@@ -278,7 +288,7 @@ update msg model =
             ( { model | myGames = gameIds }, Cmd.none )
 
         LoadGame gameId ->
-            ( model, Cmd.none )
+            ( model, Route.replaceUrl (Session.navKey model.session) (Route.PlayingGame gameId) )
 
         Refresh ->
             ( model, refresh (Session.cred model.session) )

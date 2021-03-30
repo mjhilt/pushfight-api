@@ -1,4 +1,4 @@
-port module Api exposing (Cred, GameChallenge, GameInfo, OpenGame, application, challenge, credChanges, decodeErrors, login, logout, move, mygames, opengames, register, start, status, storeCred, username)
+port module Api exposing (Cred, GameChallenge, GameInfo, OpenGame, application, challenge, credChanges, decodeErrors, login, logout, move, mygames, opengames, register, start, status, storeCred, username, join)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
@@ -272,13 +272,13 @@ gameInfoDecoder =
 -- join game
 
 
-join : String -> (Result Http.Error GameInfo -> msg) -> Cred -> Cmd msg
+join : String -> (Result Http.Error String -> msg) -> Cred -> Cmd msg
 join gid msg cred =
     let
         body =
             Encode.object [ ( "game", Encode.string gid ) ] |> Http.jsonBody
     in
-    post Endpoint.gameJoin body (Just cred) (Http.expectJson msg gameInfoDecoder)
+    post Endpoint.gameJoin body (Just cred) (Http.expectJson msg (Decode.field "game" Decode.string))
 
 
 
