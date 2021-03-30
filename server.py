@@ -13,8 +13,6 @@ from pushfight import EXAMPLE_BOARD
 from db_interface import db
 from utils import hash_pw, check_pw
 
-games = {}
-users = {}
 session_key = None
 
 def init_board():
@@ -112,7 +110,7 @@ def get_open_games():
     # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
     games = []
     # TODO: should limit the number of returned results
-    for g in db.find("games", "waitingforplayers", key="game_status"):
+    for g in db.find("games", "waitingforplayers", key="gameStage"):
         opponent = g["white_player"]
         games.append({
             "game": g["_id"],
@@ -198,7 +196,6 @@ def game_status():
 
     color = 'white' if user == game['white_player'] else 'black'
     latest = game['turns'][-1]
-    print('^^^^^', latest)
     ret = {
         "game": game['_id'],
         'board': latest['board'],
@@ -291,7 +288,7 @@ def start_impl(opponent=None):
         timed = False
 
     game = make_game(username, opponent, color=color, timed=timed)
-    print(game)
+    # print(game)
     db.put('games', game)
     return {
         "game": game['_id'],
@@ -344,32 +341,19 @@ def start_impl(opponent=None):
 
 
 @b.post('/1/game/join')
+@b.auth_basic(_auth_check)
 def post_game_join():
-    # Body: {game: `<uuid>`, [user: `<uuid>`]}
-    # Optional body param "user" allows joining as a know user
-    # Returns: {state: `<boardState>`, color: "white"|"black"}
-    body = b.request
+    user,_ = b.request.auth
+    body = b.request.json
     gid = body.get('game')
-    game = games.get(gid)
-    if not game:
-        b.abort(400, 'Bad request - no game id')
-    if not game:
+    games = db.get('games', gid)
+    if len(games)==0:
         b.abort(404, 'Game {} not found'.format(gid))
 
-    user = body.get('user')
-    if user:
-        if user != b.request.get_cookie("user", secret=session_key):
-            b.abort(401, "Bad cookie")
-    else:
-        user = new_anonymous_user()
-
-    game.join(user)
+    game = games[0]
 
     return {
         "game": game['_id'],
-        "state": game.state,
-        "color": game.color[user],
-        "timer": None, # TODO
     }
 
 
