@@ -40,46 +40,6 @@ def _auth_check(user, token):
         return False
     return user == info.get('user')
 
-def new_anonymous_user():
-    for i in range(10000):
-        if i not in users:
-            users[i] = 'anonymous'
-            return i
-
-
-def start_new_game(user, name=None):
-    if name == 'None':
-        name = '{} vs. YOU'.format(users[user])
-    return Game(user, name)
-
-
-def get_game_uuid(game):
-    for i in range(10000):
-        if i not in games:
-            games[i] = game
-            return i
-    print('No slots available! Panic!', file=sys.stderr)
-
-
-# def find_game_by_id(gid):
-    # print(games)
-    # return games[gid]
-
-# class Game(object):
-#     def __init__(self, user, name):
-#         self.id = get_game_uuid(self)
-#         self.status = 'waiting'
-#         self.players = [user]
-#         self.name = name
-
-#     def join(self, user):
-#         self.players.append(user)
-#         self.status = 'started'
-#         self.board = init_board()
-
-#         # Pick player colors
-#         # TODO: Make dict keyed by player id
-#         self.colors = random.shuffle([1,2])
 
 @b.post('/1/register')
 def register():
@@ -97,10 +57,19 @@ def register():
 
     current = db.find('users', email, key='email')
     if len(current) > 0:
+        print('ere')
+
         b.abort(400, "Email already registered")
     hashed_string = hash_pw(password)
     doc = db.put('users', {"email": email, "password": hashed_string}, key='email')
-    return {"username": doc['_id']}
+
+    # now = time.time()
+    token_info = {
+        "user": email,
+        # "expires": now + 3600,
+    }
+    token_bytes = session_key.encrypt(bytes(json.dumps(token_info), 'utf8'))
+    return {"username": email, "token": str(token_bytes, 'utf8')}
 
 
 @b.post('/1/login')
@@ -118,11 +87,12 @@ def login():
     if not is_valid_user:
         b.abort(403, "Login not correct")
 
-    now = time.time()
+    # now = time.time()
     token_info = {
         "user": user,
-        "expires": now + 3600,
+        # "expires": now + 3600,
     }
+
     token_bytes = session_key.encrypt(bytes(json.dumps(token_info), 'utf8'))
     return {"username": user, "token": str(token_bytes, 'utf8')}
 
@@ -140,15 +110,15 @@ def check_user():
 @b.get('/1/opengames')
 def get_open_games():
     # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
-    game_data = []
+    games = []
     # TODO: should limit the number of returned results
     for g in db.find("games", "waitingforplayers", key="game_status"):
         opponent = g["white_player"]
-        game_data.append({
+        games.append({
             "game": g["_id"],
             "opponent": opponent if opponent else g["black_player"],
         })
-    return {"games": game_data}
+    return {"games": games}
 
 
 @b.get('/1/mygames')
@@ -158,8 +128,24 @@ def get_my_games():
     user,_ = b.request.auth
     games = []
     for key in ("white_player", "black_player"):
-        games += [g["_id"] for g in db.find("games", user, key=key)]
+        for g in db.find("games", user, key=key):
+            if key == 'white_player':
+                opponent = g['black_player']
+            else:
+                opponent = g['white_player']
+            if opponent is None:
+                opponent = "Waiting for player"
+            # opponent = g[key]
+
+            games.append({
+                "game": g["_id"],
+                "opponent": opponent,
+            })
+
     return {"games": games}
+
+            # games += [g["_id"] ]
+    # return {"games": games}
 
 # def _getLatestState(game):
 #     if len(game.turns) == 0:
