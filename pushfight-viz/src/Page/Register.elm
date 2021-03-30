@@ -168,10 +168,8 @@ update msg model =
         CompletedRegister (Err error) ->
             let
                 serverErrors =
-                    []
-
-                --Api.decodeErrors error
-                --    |> List.map ServerError
+                    Api.decodeErrors error
+                        |> List.map ServerError
             in
             ( { model | problems = List.append model.problems serverErrors }
             , Cmd.none

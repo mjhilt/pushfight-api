@@ -199,7 +199,7 @@ handleDrag model drag dragState =
                     [ newMove ]
 
                 lastMove :: otherMoves ->
-                    if lastMove.to == newMove.from && board.anchor /= Just lastMove.to then
+                    if lastMove.to == newMove.from && not (Board.isPiece board newMove.to) then
                         List.append (List.reverse otherMoves) [ newMove ]
                     else
                         List.append model.moves [ newMove ]

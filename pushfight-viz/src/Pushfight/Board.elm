@@ -1,5 +1,5 @@
-module Pushfight.Board exposing (Board, anchorAt, decode, encode, isBlackPiece, isWhitePiece, ixToXY, move, pieceOutOfBounds)
-
+module Pushfight.Board exposing (Board, anchorAt, decode, encode, isBlackPiece, isWhitePiece, ixToXY, move, pieceOutOfBounds, isPiece)
+import Debug
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
@@ -209,6 +209,9 @@ getPushPos board start dir pos =
 
 isValidPush : List Int -> Dir -> Bool
 isValidPush pos dir =
+    let
+        _ = Debug.log "zoop" pos
+    in
     if List.length pos < 2 then
         False
 
@@ -322,6 +325,7 @@ movePiece board from to =
 pushPiece : Board -> Int -> Int -> Maybe Board
 pushPiece board from to =
     let
+        _ = Debug.log "wakka" (from,to)
         dir =
             dirFromDelta (to - from)
     in

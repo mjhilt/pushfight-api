@@ -22,22 +22,38 @@ import Username exposing (Username)
 
 type alias Model =
     { session : Session
-    , myGames : List String
-    , openGames : List String
+    , myGames : List Api.OpenGame
+    , openGames : List Api.OpenGame
     , newGameData : GameChallenge
     , problems : List String
+    , lobbyView : LobbyView
     }
 
+type LobbyView
+    = MyGames
+    | OpenGames
+    | NewGame
+
+-- init
 
 init : Session -> ( Model, Cmd Msg )
 init session =
+    --let
+    --    cmd =
+    --        case Session.cred session of
+    --            Just cred ->
+    --                Api.mygames cred GotMyGames
+    --            Nothing ->
+    --                Cmd.nothing
+    --in
     ( { session = session
       , myGames = []
       , openGames = []
       , newGameData = { color = Nothing, timed = False, opponent = "" }
       , problems = []
+      , lobbyView = MyGames
       }
-    , Cmd.none
+    , Session.cred session |> refresh
     )
 
 
@@ -58,50 +74,73 @@ view model =
                     ]
             }
 
-        Just _ ->
+        Just cred ->
+            let
+                main =
+                    case model.lobbyView of
+                        NewGame ->
+                          div []
+                            [ div [] [text "Start New Game"]
+                            , fieldset []
+                                [ button [ onClick RequestNewGame ] [ text "Start New Game" ]
+                                , checkbox ToggleTimed "Timed Game"
+                                , radiobutton "Random" (ChangeSide Nothing) (model.newGameData.color == Nothing)
+                                , radiobutton "White" (ChangeSide (Just White)) (model.newGameData.color == Just White)
+                                , radiobutton "Black" (ChangeSide (Just Black)) (model.newGameData.color == Just Black)
+
+                                , input [ placeholder "Opponent (optional)", value model.newGameData.opponent, onInput UpdateOpponent ] []
+                                ]
+                            ]
+                        MyGames ->
+                            div []
+                                [ div [] [text "My Games"]
+                                , div [] [viewMyGames model.myGames]
+                                , div [] [ button [ onClick Refresh ] [ text "Refresh" ] ]
+                                ]
+                        OpenGames ->
+                            div []
+                                [ div [] [text "Join Open Game"]
+                                , div [] [viewOpenGames model.openGames]
+                                , div [] [ button [ onClick Refresh ] [ text "Refresh" ] ]
+                                ]
+            in
+
             { title = "Lobby"
             , content =
                 div []
-                    [ div [] [ text "Let's play some pushfight!" ]
-                    , div []
-                        [ fieldset []
-                            [ button [ onClick RequestNewGame ] [ text "Start New Game" ]
-                            , checkbox ToggleTimed "Timed Game"
-                            , radiobutton "Random" (ChangeSide Nothing) (model.newGameData.color == Nothing)
-                            , radiobutton "White" (ChangeSide (Just White)) (model.newGameData.color == Just White)
-                            , radiobutton "Black" (ChangeSide (Just Black)) (model.newGameData.color == Just Black)
-
-                            --, div [style "padding" "20px"] []
-                            , input [ placeholder "Opponent (optional)", value model.newGameData.opponent, onInput UpdateOpponent ] []
-                            ]
+                    --[ div [] [ text "Let's play some pushfight!" ]
+                    [div []
+                        [ button [onClick GoToMyGames] [ text "My Games"]
+                        , button [onClick GoToOpenGames] [ text "Open Games"]
+                        , button [onClick GoToNewGame] [ text "New Game"]
                         ]
+                    , main
                     , ul [ class "error-messages" ] (model.problems |> List.map (\s -> li [] [ text s ]))
-                    , div [] [ button [ onClick Refresh ] [ text "Refresh" ] ]
                     , div [] [ button [ onClick LogOut ] [ text "Log Out" ] ]
                     ]
             }
 
 
-viewMyGames : List String -> Html Msg
+viewMyGames : List Api.OpenGame -> Html Msg
 viewMyGames myGames =
     List.map viewMyGamesImpl myGames
         |> div []
 
 
-viewMyGamesImpl : String -> Html Msg
-viewMyGamesImpl gameId =
-    div [] [ text gameId, button [ onClick (JoinGame gameId) ] [ text "Go To" ] ]
+viewMyGamesImpl : Api.OpenGame -> Html Msg
+viewMyGamesImpl game =
+    div [] [ button [ onClick (JoinAndLoadGame game.gameId) ] [ "Load Vs " ++ game.opponent  |> text ] ]
 
 
-viewOpenGames : List String -> Html Msg
+viewOpenGames : List Api.OpenGame -> Html Msg
 viewOpenGames openGames =
     List.map viewOpenGamesImpl openGames
         |> div []
 
 
-viewOpenGamesImpl : String -> Html Msg
-viewOpenGamesImpl gameId =
-    div [] [ text gameId, button [ onClick (GoToGame gameId) ] [ text "Join" ] ]
+viewOpenGamesImpl : Api.OpenGame -> Html Msg
+viewOpenGamesImpl game =
+    div [] [ button [ onClick (LoadGame game.gameId) ] [ "Join And Load Vs"  ++ game.opponent  |> text ] ]
 
 
 checkbox : msg -> String -> Html msg
@@ -155,9 +194,12 @@ type Msg
     | GotSession Session
     | GotGameData (Result Http.Error String)
     | GotOpenGames (Result Http.Error (List Api.OpenGame))
-    | GotMyGames (Result Http.Error (List String))
-    | GoToGame String
-    | JoinGame String
+    | GotMyGames (Result Http.Error (List Api.OpenGame))
+    | LoadGame String
+    | JoinAndLoadGame String
+    | GoToMyGames
+    | GoToOpenGames
+    | GoToNewGame
     | Refresh
 
 
@@ -213,7 +255,7 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-        JoinGame gameID ->
+        JoinAndLoadGame gameID ->
             ( model, Cmd.none )
 
         GotSession session ->
@@ -223,11 +265,11 @@ update msg model =
             ( model, Cmd.none )
 
         GotOpenGames (Ok opengames) ->
-            let
-                gameIds =
-                    List.map (\a -> a.gameId) opengames
-            in
-            ( { model | openGames = gameIds }, Cmd.none )
+            --let
+            --    gameIds =
+            --        List.map (\a -> a.gameId) opengames
+            --in
+            ( { model | openGames = opengames }, Cmd.none )
 
         GotMyGames (Err error) ->
             ( model, Cmd.none )
@@ -235,7 +277,7 @@ update msg model =
         GotMyGames (Ok gameIds) ->
             ( { model | myGames = gameIds }, Cmd.none )
 
-        GoToGame gameId ->
+        LoadGame gameId ->
             ( model, Cmd.none )
 
         Refresh ->
@@ -252,7 +294,12 @@ update msg model =
             ( { model | problems = List.append model.problems serverErrors }
             , Cmd.none
             )
-
+        GoToNewGame ->
+            ( {model | lobbyView = NewGame}, Cmd.none )
+        GoToOpenGames ->
+            ( {model | lobbyView = OpenGames}, Session.cred model.session |> refresh )
+        GoToMyGames ->
+            ( {model | lobbyView = MyGames}, Session.cred model.session |> refresh )
 
 
 -- SUBSCRIPTIONS

@@ -146,14 +146,14 @@ opengamesDecoder =
 -- mygames
 
 
-mygames : (Result Http.Error (List String) -> msg) -> Cred -> Cmd msg
+mygames : (Result Http.Error (List OpenGame) -> msg) -> Cred -> Cmd msg
 mygames msg cred =
-    get Endpoint.mygames Http.emptyBody (Just cred) (Http.expectJson msg mygamesDecoder)
+    get Endpoint.mygames Http.emptyBody (Just cred) (Http.expectJson msg opengamesDecoder)
 
 
-mygamesDecoder : Decoder (List String)
-mygamesDecoder =
-    field "games" (Decode.list string)
+--mygamesDecoder : Decoder (List String)
+--mygamesDecoder =
+--    field "games" (Decode.list string)
 
 
 
