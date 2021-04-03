@@ -173,12 +173,12 @@ refresh cred =
     case cred of
         Just c ->
             Cmd.batch
-                [ Api.opengames GotOpenGames
+                [ Api.opengames GotOpenGames c
                 , Api.mygames GotMyGames c
                 ]
 
         Nothing ->
-            Api.opengames GotOpenGames
+            Cmd.none
 
 
 

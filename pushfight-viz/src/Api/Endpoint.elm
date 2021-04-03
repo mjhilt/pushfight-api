@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, gameChallenge, gameJoin, gameStart, gameStatus, login, move, mygames, opengames, register, unwrap)
+module Api.Endpoint exposing (Endpoint, gameChallenge, gameJoin, gameStart, login, move, mygames, opengames, register, unwrap, update)
 
 import Http
 import Url.Builder exposing (QueryParameter)
@@ -77,12 +77,12 @@ gameJoin =
     url [ "game", "join" ] []
 
 
-gameStatus :
-    String
-    -> Endpoint
-gameStatus uuid =
-    --url [ "game", "status", uuid ] [] -- [ Url.Builder.string "game" uuid ]
-    url [ "game", "status" ] [ Url.Builder.string "game" uuid ]
+--gameStatus :
+--    String
+--    -> Endpoint
+--gameStatus uuid =
+--    --url [ "game", "status", uuid ] [] -- [ Url.Builder.string "game" uuid ]
+--    url [ "game", "status" ] [ Url.Builder.string "game" uuid ]
 --gameStatus : Endpoint
 --gameStatus =
 --    url [ "game", "status" ] []
@@ -90,3 +90,8 @@ gameStatus uuid =
 move : Endpoint
 move =
     url [ "move" ] []
+
+
+update : Endpoint
+update =
+    url [ "update" ] []

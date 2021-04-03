@@ -1,6 +1,7 @@
 module Pushfight.Game exposing (Model, Msg, OutMsg(..), init, subscriptions, update, view)
 
 import Html
+import Html.Events
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Touch as Touch
 
@@ -69,6 +70,7 @@ type Msg
     | OfferDraw
     | AcceptTakeback
     | AcceptDraw
+    | Resign
 
 
 type OutMsg
@@ -78,6 +80,7 @@ type OutMsg
     | SendOfferDraw
     | SendAcceptDraw
     | SendAcceptTakeback
+    | SendResign
 
 
 
@@ -191,18 +194,19 @@ handleDrag model drag dragState =
     let
 
         newMove = getDragFromToIX model.orientation drag model.gridSize
-        board = doMoves model.moves model.board |> Maybe.withDefault model.board
+        --board = doMoves model.moves model.board |> Maybe.withDefault model.board
 
         newMoves =
-            case List.reverse model.moves of
-                [] ->
-                    [ newMove ]
+            List.append model.moves [ newMove ]
+            --case List.reverse model.moves of
+            --    --[] ->
+            --    --    [ newMove ]
 
-                lastMove :: otherMoves ->
-                    if lastMove.to == newMove.from && not (Board.isPiece board newMove.to) then
-                        List.append (List.reverse otherMoves) [ newMove ]
-                    else
-                        List.append model.moves [ newMove ]
+            --    --lastMove :: otherMoves ->
+            --        --if lastMove.to == newMove.from && not (Board.isPiece board newMove.to) then
+            --            --List.append (List.reverse otherMoves) [ newMove ]
+            --        --else
+            --        List.append model.moves [ newMove ]
 
         isValid = True
             --(Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
@@ -258,6 +262,17 @@ update msg model =
         AcceptTakeback ->
             ( model, SendAcceptTakeback )
 
+        Resign ->
+            --let
+            --    gs =
+            --        case model.color of
+            --            White ->
+            --                BlackWon
+            --            Black ->
+            --                WhiteWon
+            --in
+            --({model| gameStage = gs }, SendResign)
+            (model, SendResign)
 
 
 -- subscriptions
@@ -349,7 +364,16 @@ view model =
             let
                 (x,y) = e.offsetPos
             in
-            msg {x=floor x,y = floor y} |> DragMsg              
+            msg {x=floor x,y = floor y} |> DragMsg
+        requestView =
+            case model.request of
+                NoRequest ->
+                    Html.div [] []
+                TakebackRequested ->
+                    Html.div [] [Html.button [ Html.Events.onClick AcceptTakeback ] [Html.text "Accept Takeback"]]
+                DrawOffered ->
+                    Html.div [] [Html.button [ Html.Events.onClick AcceptDraw ] [Html.text "Accept Draw"]]
+
     in
     Html.div []
         [ Html.text title
@@ -370,6 +394,16 @@ view model =
                 , anchorViz
                 ]
             )
+        , Html.div []
+            [ Html.button [ Html.Events.onClick EndTurn ] [Html.text "End Turn"]
+            , Html.button [ Html.Events.onClick Undo ] [Html.text "Undo"]
+            ]
+        , Html.div []
+            [ Html.button [ Html.Events.onClick RequestTakeBack ] [Html.text "Request Takeback"]
+            , Html.button [ Html.Events.onClick OfferDraw ] [Html.text "Offer Draw"]
+            , Html.button [ Html.Events.onClick Resign ] [Html.text "Resign"]
+            ]
+        , requestView
         ]
 
 

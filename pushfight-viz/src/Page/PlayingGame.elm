@@ -78,8 +78,9 @@ type Msg
     | GotGameMsg Game.Msg
       --| GameFromServer Wakka
     | GameFromServer (Result Http.Error Api.GameInfo)
+    --| UpdateRequest (Result Http.Error Request)
     | CheckServer Time.Posix
-    | MovePosted (Result Http.Error ())
+    --| MovePosted (Result Http.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -102,34 +103,40 @@ update msg model =
                             Game.update gmsg game
 
                         gameCmd =
-                            case outMsg of
-                                SendNoOp ->
+                            case (outMsg, Session.cred model.session) of
+                                (SendNoOp, _) ->
                                     Cmd.none
 
-                                SendTurnEnded ( finalBoard, finalGameStage ) ->
-                                    case Session.cred model.session of
-                                        Just cred ->
-                                            Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred MovePosted
+                                (SendTurnEnded( finalBoard, finalGameStage ), Just cred) ->
+                                    --case Session.cred model.session of
+                                        --Just cred ->
+                                    Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred GameFromServer
 
-                                        Nothing ->
-                                            Cmd.none
+                                        --Nothing ->
+                                            --Cmd.none
 
-                                SendRequestTakeback ->
-                                    Cmd.none
+                                (SendRequestTakeback, Just cred) ->
+                                    Api.update "takeback_requested" model.gameId cred GameFromServer
 
-                                SendOfferDraw ->
-                                    Cmd.none
+                                (SendOfferDraw, Just cred) ->
+                                    Api.update "draw_offered" model.gameId cred GameFromServer
 
-                                SendAcceptDraw ->
-                                    Cmd.none
+                                (SendAcceptDraw, Just cred) ->
+                                    Api.update "accept_draw" model.gameId cred GameFromServer
 
-                                SendAcceptTakeback ->
+                                (SendAcceptTakeback, Just cred) ->
+                                    Api.update "accept_takeback" model.gameId cred GameFromServer
+
+                                (SendResign, Just cred) ->
+                                    Api.update "resign" model.gameId cred GameFromServer
+
+                                (_, Nothing) ->
                                     Cmd.none
                     in
                     ( { model | game = Loaded newGame }, gameCmd )
 
-        MovePosted _ ->
-            ( model, Cmd.none )
+        --MovePosted _ ->
+        --    ( model, Cmd.none )
 
         --GameFromServer _ ->
         --    ( model, Cmd.none )
@@ -150,6 +157,7 @@ update msg model =
                                 | board = gameFromServer.board
                                 , gameStage = gameFromServer.gameStage
                                 , color = gameFromServer.color
+                                , request = gameFromServer.request
                             }
 
                         Loading ->
@@ -188,7 +196,7 @@ subscriptions model =
     Sub.batch
         [ Session.changes GotSession (Session.navKey model.session)
         , Sub.map GotGameMsg Game.subscriptions
-        , Time.every 1000 CheckServer
+        , Time.every 2000 CheckServer
         ]
 
 

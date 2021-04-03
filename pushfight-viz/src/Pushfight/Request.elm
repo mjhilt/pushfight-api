@@ -13,13 +13,13 @@ type Request
 decodeRequestImpl : String -> Decoder Request
 decodeRequestImpl request =
     case request of
-        "NoRequest" ->
+        "no_request" ->
             Decode.succeed NoRequest
 
-        "TakebackRequested" ->
+        "takeback_requested" ->
             Decode.succeed TakebackRequested
 
-        "DrawOffered" ->
+        "draw_offered" ->
             Decode.succeed DrawOffered
 
         other ->
@@ -36,10 +36,10 @@ encode : Request -> Encode.Value
 encode request =
     case request of
         NoRequest ->
-            Encode.string "NoRequest"
+            Encode.string "no_request"
 
         TakebackRequested ->
-            Encode.string "TakebackRequested"
+            Encode.string "takeback_requested"
 
         DrawOffered ->
-            Encode.string "DrawOffered"
+            Encode.string "draw_offered"

@@ -1,4 +1,4 @@
-port module Api exposing (Cred, GameChallenge, GameInfo, OpenGame, application, challenge, credChanges, decodeErrors, login, logout, move, mygames, opengames, register, start, status, storeCred, username, join)
+port module Api exposing (Cred, GameChallenge, GameInfo, OpenGame, application, challenge, credChanges, decodeErrors, login, logout, move, mygames, opengames, register, start, status, storeCred, username, join, update)
 
 import Api.Endpoint as Endpoint exposing (Endpoint)
 import Avatar exposing (Avatar)
@@ -125,9 +125,9 @@ type alias OpenGame =
     }
 
 
-opengames : (Result Http.Error (List OpenGame) -> msg) -> Cmd msg
-opengames msg =
-    get Endpoint.opengames Http.emptyBody Nothing (Http.expectJson msg opengamesDecoder)
+opengames : (Result Http.Error (List OpenGame) -> msg) -> Cred -> Cmd msg
+opengames msg cred =
+    get Endpoint.opengames Http.emptyBody (Just cred) (Http.expectJson msg opengamesDecoder)
 
 
 opengamesDecoderHelper : Decoder OpenGame
@@ -285,7 +285,7 @@ join gid msg cred =
 -- make move
 
 
-move : GameStage.GameStage -> Board.Board -> List Move.Move -> GameStage.GameStage -> Board.Board -> String -> Cred -> (Result Http.Error () -> msg) -> Cmd msg
+move : GameStage.GameStage -> Board.Board -> List Move.Move -> GameStage.GameStage -> Board.Board -> String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
 move startGameStage board moves finalGameStage finalBoard gameId cred msg =
     let
         body =
@@ -295,12 +295,12 @@ move startGameStage board moves finalGameStage finalBoard gameId cred msg =
                 , ( "finalBoard", Board.encode finalBoard )
                 , ( "startGameStage", GameStage.encode startGameStage )
                 , ( "finalGameStage", GameStage.encode finalGameStage )
-                , ( "gameId", Encode.string gameId )
+                , ( "game", Encode.string gameId )
                 , ( "timer", Encode.null )
                 ]
                 |> Http.jsonBody
     in
-    post Endpoint.move body (Just cred) (Http.expectWhatever msg)
+    post Endpoint.move body (Just cred) (Http.expectJson msg gameInfoDecoder)
 
 
 
@@ -314,8 +314,8 @@ move startGameStage board moves finalGameStage finalBoard gameId cred msg =
 --    }
 
 
-status : String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
-status gameId cred msg =
+--status : String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
+--status gameId cred msg =
     --let
     --    body =
     --        Encode.object [ ( "game", Encode.string gameId ) ] |> Http.jsonBody
@@ -324,7 +324,30 @@ status gameId cred msg =
 
 
 
-    get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
+--    get (Endpoint.gameStatus gameId) Http.emptyBody (Just cred) (Http.expectJson msg gameInfoDecoder)
+
+
+--request : Request -> String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
+--request request gameId cred msg =
+--    let
+--        body =
+--            Encode.object [ ("request", Request.encode request) ] |> Http.jsonBody
+--    in
+--    post Endpoint.update body (Just cred) (Http.expectJson msg gameInfoDecoder)
+
+update : String -> String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
+update info gameId cred msg =
+    let
+        body =
+            Encode.object
+                [ (info, Encode.null)
+                , ( "game", Encode.string gameId )
+                ] |> Http.jsonBody
+    in
+        post Endpoint.update body (Just cred) (Http.expectJson msg gameInfoDecoder)
+
+status = update "noop"
+
 -- PERSISTENCE
 
 
