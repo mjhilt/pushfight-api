@@ -4,7 +4,6 @@ import Html
 import Html.Events
 import Html.Events.Extra.Mouse as Mouse
 import Html.Events.Extra.Touch as Touch
-
 import Pushfight.Board as Board
 import Pushfight.Color exposing (Color(..))
 import Pushfight.DragState as DragState
@@ -169,6 +168,7 @@ handleEndTurn moves board gameStage color =
         _ ->
             Nothing
 
+
 getDragFromToIX : Orientation.Orientation -> DragState.Drag -> Int -> Move
 getDragFromToIX orientation drag gridSize =
     let
@@ -187,29 +187,31 @@ getDragFromToIX orientation drag gridSize =
         to =
             toX + 10 * toY
     in
-        {from=from,to=to}
+    { from = from, to = to }
+
 
 handleDrag : Model -> DragState.Drag -> DragState.Model -> Model
 handleDrag model drag dragState =
     let
+        newMove =
+            getDragFromToIX model.orientation drag model.gridSize
 
-        newMove = getDragFromToIX model.orientation drag model.gridSize
         --board = doMoves model.moves model.board |> Maybe.withDefault model.board
-
         newMoves =
             List.append model.moves [ newMove ]
-            --case List.reverse model.moves of
-            --    --[] ->
-            --    --    [ newMove ]
 
-            --    --lastMove :: otherMoves ->
-            --        --if lastMove.to == newMove.from && not (Board.isPiece board newMove.to) then
-            --            --List.append (List.reverse otherMoves) [ newMove ]
-            --        --else
-            --        List.append model.moves [ newMove ]
+        --case List.reverse model.moves of
+        --    --[] ->
+        --    --    [ newMove ]
+        --    --lastMove :: otherMoves ->
+        --        --if lastMove.to == newMove.from && not (Board.isPiece board newMove.to) then
+        --            --List.append (List.reverse otherMoves) [ newMove ]
+        --        --else
+        --        List.append model.moves [ newMove ]
+        isValid =
+            True
 
-        isValid = True
-            --(Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
+        --(Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
     in
     case ( isValid, doMoves newMoves model.board ) of
         ( True, Just _ ) ->
@@ -272,7 +274,8 @@ update msg model =
             --                WhiteWon
             --in
             --({model| gameStage = gs }, SendResign)
-            (model, SendResign)
+            ( model, SendResign )
+
 
 
 -- subscriptions
@@ -281,10 +284,10 @@ update msg model =
 subscriptions : Sub Msg
 subscriptions =
     Sub.none
-    --Sub.map DragMsg DragState.subscriptions
 
 
 
+--Sub.map DragMsg DragState.subscriptions
 -- view
 
 
@@ -293,9 +296,11 @@ view model =
     let
         rmapXY =
             Orientation.rmapXY model.orientation
+
         moveBoard =
             doMoves model.moves model.board
-            |> Maybe.withDefault model.board
+                |> Maybe.withDefault model.board
+
         piecesViz =
             List.foldl (++)
                 []
@@ -360,20 +365,24 @@ view model =
 
                 Draw ->
                     "Draw - Game Over"
+
         eventHelper msg e =
             let
-                (x,y) = e.offsetPos
+                ( x, y ) =
+                    e.offsetPos
             in
-            msg {x=floor x,y = floor y} |> DragMsg
+            msg { x = floor x, y = floor y } |> DragMsg
+
         requestView =
             case model.request of
                 NoRequest ->
                     Html.div [] []
-                TakebackRequested ->
-                    Html.div [] [Html.button [ Html.Events.onClick AcceptTakeback ] [Html.text "Accept Takeback"]]
-                DrawOffered ->
-                    Html.div [] [Html.button [ Html.Events.onClick AcceptDraw ] [Html.text "Accept Draw"]]
 
+                TakebackRequested ->
+                    Html.div [] [ Html.button [ Html.Events.onClick AcceptTakeback ] [ Html.text "Accept Takeback" ] ]
+
+                DrawOffered ->
+                    Html.div [] [ Html.button [ Html.Events.onClick AcceptDraw ] [ Html.text "Accept Draw" ] ]
     in
     Html.div []
         [ Html.text title
@@ -381,10 +390,12 @@ view model =
             [ Svg.Attributes.width width
             , Svg.Attributes.height height
             , Svg.Attributes.viewBox <| "0 0 " ++ width ++ " " ++ height
+
             --, Mouse.onDown ( \event -> (DragMsg (DragState.MouseDown {x=round event.offsetPos.x, y=round event.offsetPos.y})) )
             , Mouse.onMove (eventHelper DragState.MouseMove)
             , Mouse.onDown (eventHelper DragState.MouseDown)
             , Mouse.onUp (eventHelper DragState.MouseUp)
+
             --, Touch.onStart (eventHelper DragState.MouseDown)
             --, Touch.onEnd (eventHelper DragState.MouseUp)
             ]
@@ -395,13 +406,13 @@ view model =
                 ]
             )
         , Html.div []
-            [ Html.button [ Html.Events.onClick EndTurn ] [Html.text "End Turn"]
-            , Html.button [ Html.Events.onClick Undo ] [Html.text "Undo"]
+            [ Html.button [ Html.Events.onClick EndTurn ] [ Html.text "End Turn" ]
+            , Html.button [ Html.Events.onClick Undo ] [ Html.text "Undo" ]
             ]
         , Html.div []
-            [ Html.button [ Html.Events.onClick RequestTakeBack ] [Html.text "Request Takeback"]
-            , Html.button [ Html.Events.onClick OfferDraw ] [Html.text "Offer Draw"]
-            , Html.button [ Html.Events.onClick Resign ] [Html.text "Resign"]
+            [ Html.button [ Html.Events.onClick RequestTakeBack ] [ Html.text "Request Takeback" ]
+            , Html.button [ Html.Events.onClick OfferDraw ] [ Html.text "Offer Draw" ]
+            , Html.button [ Html.Events.onClick Resign ] [ Html.text "Resign" ]
             ]
         , requestView
         ]
@@ -412,7 +423,10 @@ drawPiece size rmapXY isWhite isPusher ix =
     let
         ( x, y ) =
             Board.ixToXY ix
-        ( rx, ry ) = rmapXY x y
+
+        ( rx, ry ) =
+            rmapXY x y
+
         ( color, accentColor ) =
             if isWhite then
                 ( pieceColorWhite, pieceColorBlack )
@@ -494,6 +508,7 @@ drawBoard size rotateXY =
             , 34
             , 35
             , 36
+
             --, 37
             ]
 
@@ -555,6 +570,7 @@ drawMover size x y color accentColor =
         , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
         , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
         , Svg.Attributes.r <| String.fromInt <| round ((fsize * 0.95) / 2.0)
+
         --, Mouse.onDown ( \e -> DragState.MouseDown {x=x*size + size//2, y=y*size + size//2} |> DragMsg)
         ]
         []

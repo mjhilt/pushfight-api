@@ -1,6 +1,5 @@
 module Pushfight.DragState exposing (Drag, Model, MousePosition, Msg(..), init, subscriptions, update)
 
-
 import Browser.Events
 import Json.Decode as Decode exposing (Decoder)
 

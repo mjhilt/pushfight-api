@@ -1,4 +1,5 @@
-module Pushfight.Board exposing (Board, anchorAt, decode, encode, isBlackPiece, isWhitePiece, ixToXY, move, pieceOutOfBounds, isPiece)
+module Pushfight.Board exposing (Board, anchorAt, decode, encode, isBlackPiece, isPiece, isWhitePiece, ixToXY, move, pieceOutOfBounds)
+
 import Debug
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
@@ -195,7 +196,6 @@ getPushPos : Board -> Int -> Dir -> List Int -> List Int
 getPushPos board start dir pos =
     --if (start < 0) || (start >= 40) then
     --    pos
-
     --else
     let
         next =
@@ -203,6 +203,7 @@ getPushPos board start dir pos =
     in
     if isPiece board start then
         getPushPos board next dir (start :: pos)
+
     else
         pos
 
@@ -210,7 +211,8 @@ getPushPos board start dir pos =
 isValidPush : List Int -> Dir -> Bool
 isValidPush pos dir =
     let
-        _ = Debug.log "zoop" pos
+        _ =
+            Debug.log "zoop" pos
     in
     if List.length pos < 2 then
         False
@@ -218,7 +220,7 @@ isValidPush pos dir =
     else
         let
             _ =
-                Debug.log "wakka" (pos, dir)
+                Debug.log "wakka" ( pos, dir )
         in
         case ( dir, pos ) of
             ( Up, p :: ps ) ->
@@ -243,7 +245,7 @@ executePush board pos dir =
             in
             case updatedBoard of
                 Just ub ->
-                    Just { ub | anchor = Just (p+dir) }
+                    Just { ub | anchor = Just (p + dir) }
 
                 Nothing ->
                     Nothing
@@ -325,7 +327,9 @@ movePiece board from to =
 pushPiece : Board -> Int -> Int -> Maybe Board
 pushPiece board from to =
     let
-        _ = Debug.log "wakka" (from,to)
+        _ =
+            Debug.log "wakka" ( from, to )
+
         dir =
             dirFromDelta (to - from)
     in

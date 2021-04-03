@@ -77,6 +77,7 @@ gameJoin =
     url [ "game", "join" ] []
 
 
+
 --gameStatus :
 --    String
 --    -> Endpoint
@@ -86,6 +87,7 @@ gameJoin =
 --gameStatus : Endpoint
 --gameStatus =
 --    url [ "game", "status" ] []
+
 
 move : Endpoint
 move =
