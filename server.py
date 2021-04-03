@@ -24,6 +24,9 @@ def check_cred(user, password):
     for rec in db.find('users', user, key='email'):
         stored = rec.get('password').encode('utf8')
         return stored and check_pw(password, stored)
+    for rec in db.find('users', user, key='username'):
+        stored = rec.get('password').encode('utf8')
+        return stored and check_pw(password, stored)
     return False
 
 
@@ -31,12 +34,18 @@ def _auth_check(user, token):
     try:
         b = session_key.decrypt(bytes(token, 'utf8'))
     except InvalidToken:
+        print('AUTH: InvalidToken', file=sys.stderr)
         return False
     try:
         info = json.loads(str(b, 'utf8'))
     except:
+        print('AUTH: Failed to load info', file=sys.stderr)
         return False
-    return user == info.get('user')
+    print(user)
+    check = user == info.get('user')
+    if not check:
+        print('AUTH: Failed to pass check', file=sys.stderr)
+    return check
 
 
 @b.post('/1/register')
@@ -49,36 +58,54 @@ def register():
     if 'user' in body:
         body = body['user']
     email = body.get('email')
+    username = body.get('username')
     password = body.get('password')
-    if not email or not password:
-        b.abort(400, "Bad request - no username/password")
+    if not all([username,email,password]):
+        print("Bad request - no username/email/password", file=sys.stderr)
+        b.abort(400, "Bad request - no username/email/password")
 
     current = db.find('users', email, key='email')
     if len(current) > 0:
-        print('ere')
-
+        print("Email already registered", file=sys.stderr)
         b.abort(400, "Email already registered")
+
+    current = db.find('users', username, key='username')
+    if len(current) > 0:
+        print("Username already taken", file=sys.stderr)
+        b.abort(400, "Username already taken")
+
     hashed_string = hash_pw(password)
-    doc = db.put('users', {"email": email, "password": hashed_string}, key='email')
+    doc = db.put('users', {"email": email, "password": hashed_string, "username": username}, key='username')
 
     # now = time.time()
     token_info = {
-        "user": email,
+        "user": username,
         # "expires": now + 3600,
     }
     token_bytes = session_key.encrypt(bytes(json.dumps(token_info), 'utf8'))
-    return {"username": email, "token": str(token_bytes, 'utf8')}
+    return {"username": username, "token": str(token_bytes, 'utf8')}
 
 
 @b.post('/1/login')
 def login():
-    # Body: {user: `<uuid>`, password: <base64 encoded password>}
+    # Body: {user: `<uuid>`, toket: "newsecret"}
     body = b.request.json
     if not body:
         b.abort(400, "Bad request")
-    user = body.get('user')
+
+    user = None
+    for rec in db.find('users', body.get('user'), key='email'):
+        user = rec['username']
+        break
+    if user is None:
+        for rec in db.find('users', body.get('user'), key='username'):
+            user = rec['username']
+            break
+
+
     password = body.get('password')
     if not user or not password:
+        print("Bad login request", file=sys.stderr)
         b.abort(400, "Bad request")
 
     is_valid_user = check_cred(user, base64.b64decode(bytes(password, 'utf8')))
@@ -106,131 +133,71 @@ def check_user():
 
 
 @b.get('/1/opengames')
+@b.auth_basic(_auth_check)
 def get_open_games():
     # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
+    user,_ = b.request.auth
     games = []
-    # TODO: should limit the number of returned results
     for g in db.find("games", "waitingforplayers", key="gameStage"):
-        opponent = g["white_player"]
+        wp = g["white_player"]
+        bp = g["black_player"]
+        if user in (wp,bp):
+            continue
+
         games.append({
             "game": g["_id"],
-            "opponent": opponent if opponent else g["black_player"],
+            "opponent": wp if wp else bp
         })
-    return {"games": games}
+    # TODO: should limit the number of returned results more intelligently
+    random.shuffle(games)
+    return {"games": games[:10]}
 
+
+def _gen_my_games(user):
+    for key in ("white", "black"):
+        for g in db.find("games", user, key=key + "_player"):
+            yield key, g
 
 @b.get('/1/mygames')
 @b.auth_basic(_auth_check)
 def get_my_games():
-    # Returns: {games: [`<uuid>`, ...]}
+    # Returns: {games: [{game: `<uuid>`, opponent: `<uuid>`}, ...]}
     user,_ = b.request.auth
     games = []
-    for key in ("white_player", "black_player"):
-        for g in db.find("games", user, key=key):
-            if key == 'white_player':
-                opponent = g['black_player']
-            else:
-                opponent = g['white_player']
-            if opponent is None:
-                opponent = "Waiting for player"
-            # opponent = g[key]
+    for color, g in _gen_my_games(user):
+        # don't show unstarted games
+        if _get_game_stage(g) == 'waitingforplayers':
+            continue
+        # don't show completed games
+        if g['final_game_stage'] is not None:
+            continue
+        if color == 'white_player':
+            opponent = g['black_player']
+        else:
+            opponent = g['white_player']
 
-            games.append({
-                "game": g["_id"],
-                "opponent": opponent,
-            })
+        games.append({
+            "game": g["_id"],
+            "opponent": opponent,
+        })
 
     return {"games": games}
-
-            # games += [g["_id"] ]
-    # return {"games": games}
-
-# def _getLatestState(game):
-#     if len(game.turns) == 0:
-#         return make_game()
-#     else:
-#         return game.turns[-1]['endBoard']
-    # if game['black_setup'] is None:
-    #     if game['white_setup'] is None:
-    #         state = make_game()
-    #     else:
-    #         state = game['white_setup']
-    # else:
-    #     if len(game['turns'] == 0):
-    #         state = game['black_setup']
-    #     else:
-    #         state = game['turns'][-1]['finalBoard']
-
-    # return state
-
-# @b.post('/1/game/status/<game_id>')
-@b.get('/1/game/status')
-@b.auth_basic(_auth_check)
-def game_status():
-# def game_status(game_id):
-    # print('ere')
-    user,_ = b.request.auth
-    # body = b.request.json
-    # print(user)
-    # print(b.request.json)
-    # body = b.request.body.read()
-    # print(body)
-    # print('ere')
-    # game_id = body.game
-    # game_id = b.request.query['game']
-    # for k,v in b.request.query.items():
-    #     print(k,v)
-    game_id = b.request.query.game
-    # print(game_id)
-    # print('#############')
-    games = db.find('games', game_id)
-    # print(games)
-    if len(games) == 0:
-        b.abort(404, "No such game")
-        return
-    assert len(games) == 1
-    game = games[0]
-    if user not in [game['white_player'], game['black_player']]:
-        b.abort(404, "User not associated with game")
-        return
-
-    color = 'white' if user == game['white_player'] else 'black'
-    latest = game['turns'][-1]
-    ret = {
-        "game": game['_id'],
-        'board': latest['board'],
-        'gameStage': latest['gameStage'],
-        'request': game['request'],
-        'color': color,
-    }
-    # ret = {
-    #     'board': _getLatestState(game),
-    #     'gameStage': game['gameStage'],
-    #     'color': color,
-    #     'request': game['request'],
-    # }
-    return ret
 
 def make_game(user1, user2, color='white', timed=False):
     _id = '{}_{}_{}'.format(user1, user2, int(time.time()))
     turn = {
-        # 'startBoard': None,
-        # 'startGameStage': None,
         'moves': [],
         'gameStage': 'whitesetup' if user2 is not None else 'waitingforplayers',
         'board': init_board(),
     }
     return {
             "_id": _id,
-            # "state": init_board(),
             "white_player": user1 if color == 'white' else user2,
             "black_player": user2 if color == 'white' else user1,
-            # "white_setup": None,
-            # "black_setup": None,
             "turns": [turn],
-            # 'color': color,
-            # "game_stage": "WhiteSetup",
-            'request': "NoRequest"
+            "final_game_stage": None,
+            'gameStage': turn['gameStage'],
+            'request': "no_request"
         }
 
 
@@ -245,7 +212,7 @@ def post_challenge():
         return
 
     for rec in db.find('users', opponent_email, key='email'):
-       return start_impl(opponent=opponent_email)
+       return start_impl(opponent=rec['username'])
 
     b.abort(404, "No such opponent")
 
@@ -258,32 +225,12 @@ def post_start():
 
 def start_impl(opponent=None):
     body = b.request
-    # username = body.user
     username,_ = b.request.auth
-    # if username != b.request.get_cookie("user", secret=session_key):
-        # b.abort(401, "Bad cookie")
 
-    # TODO: This is really dumb that we look up the user to check the cookie
-    #       but then look it up again here. We should fix that.
-    # user = None
-    # for rec in db.find('users', username, key='email'):
-    #     user = rec
-    #     break
-    # if user is None:
-    #     print("Failed to find user")
-    #     b.abort(404, "Failed to find user")
-    #     return
-    # color = body.color
     if "color" not in body or body.color not in ["white", "black"]:
         color = random.choice(["white", "black"])
     else:
         color = body.color
-    # print('wakka', color)
-    # if color not in
-    # try:
-    #     color = body.color
-    # except KeyError:
-    #     color = 'white'
 
     try:
         timed = body.timed
@@ -291,7 +238,6 @@ def start_impl(opponent=None):
         timed = False
 
     game = make_game(username, opponent, color=color, timed=timed)
-    # print(game)
     db.put('games', game)
     return {
         "game": game['_id'],
@@ -302,50 +248,12 @@ def start_impl(opponent=None):
         # "timer": None, # TODO
     }
 
-# def find_open_game():
-#     for gid, game in games.items():
-#         if len(game.players) == 1:
-#             return gid, game
-#     return None, None
-
-# @b.get('/1/game/start')
-# def gameStart_1():
-#     # Query options: join=`<bool>`, user=`<uuid>`
-#     # Returns: {game: `<uuid>`, user: `<uuid>`, status: "waiting"|"started", [state: `<boardState>`, color: "white"|"black"]}
-#     print(b.request.query)
-
-#     user = b.request.query.user
-#     if user:
-#         if user != b.request.get_cookie("user", secret=session_key):
-#             b.abort(401, "Bad cookie")
-#     else:
-#         user = new_anonymous_user()
-
-#     retval = {}
-#     game = None
-#     if b.request.query.join:
-#         _, game = find_open_game()
-
-#     if game is None:
-#         game = start_new_game(user)
-
-#     retval = {
-#         "game": game.id,
-#         "user": user,
-#         # "status": game.status,
-#         'color': game.color[user],
-#     }
-#     # db.out
-#     # if game.status != 'waitingforplayers':
-#     #     retval['state'] = game.board
-#     #     retval['color'] = game.color[user]
-
-#     return retval
-
-
 @b.post('/1/game/join')
 @b.auth_basic(_auth_check)
 def post_game_join():
+    '''
+    returns {game:game_id}
+    '''
     user,_ = b.request.auth
     body = b.request.json
     gid = body.get('game')
@@ -359,58 +267,127 @@ def post_game_join():
         "game": game['_id'],
     }
 
-
-# @b.get('/1/game/status')
-# def get_game_status():
-#     gid = b.request.query.game
-#     game = db.find('games', gid)
-#     if game:
-#         # return game.status
-#     else:
-#         b.abort(404, '{} not found'.format(gid))
-
-
-@b.post('/1/move')
-def post_move():
-    body = b.request
-    user,_ = b.request.auth
-    game_id = body.gameId
-    games = db.find('games', game_id, key='email')
+def _get_game_info(game_id, user):
+    '''
+    helper to determine get game from db
+    returns (game, user color {black, white})
+    '''
+    games = db.find('games', game_id)
     if len(games) == 0:
-        b.abort(404, "No such game")
-        return
+        raise ValueError("No such game")
     assert len(games) == 1
     game = games[0]
-    if user not in [game['white_player'], game['black_player']]:
+    # if user not in [game['white_player'], game['black_player']]:
+    if user == game['white_player']:
+        color = 'white'
+    elif user == game['black_player']:
+        color = 'black'
+    else:
+        raise ValueError("User not associated with game")
+    return game, color
+
+def _get_game_stage(game):
+    '''
+    helper to parse game object and return definitive game stage
+    TODO having gameStage within the turn and twice on top feels *horrible*
+    '''
+    if 'final_game_stage' in game and game['final_game_stage'] is not None:
+        return game['final_game_stage']
+    else:
+        return game['turns'][-1]['gameStage']
+
+def _game_info(game, color):
+    '''
+    Helper to format game + color into GameInfo return
+    '''
+    return {
+        "game": game['_id'],
+        "board": game['turns'][-1]['board'],
+        "gameStage": _get_game_stage(game),
+        "request": game['request'],
+        "color": color,
+    }
+
+@b.post('/1/move')
+@b.auth_basic(_auth_check)
+def post_move():
+    '''
+    Record a move.
+    Returns GameInfo (defined in Api.elm)
+    '''
+    body = b.request
+    user,_ = b.request.auth
+    game_id = body.game
+    try:
+        game, color = _get_game_info(game_id, user)
+    except ValueError as e:
+        print(e, file=sys.stderr)
         b.abort(404, "User not associated with game")
         return
-    # if body.startGameStage == 'WhiteSetup':
-    #     game['white_setup'] = body.endBoard
-    # elif body.startGameStage == 'BlackSetup':
-    #     game['white_setup'] = body.endBoard
-    # board = board.board
-    turn = {
-        # 'startBoard': body.startBoard,
-        # 'startGameStage': body.startGameStage,
-        'moves': body.moves,
-        'gameStage': body.endGameStage,
-        'board': body.endBoard,
-    }
-    # if len(game.turns) == 0:
-        # game['turns'].append(turn)
-    if game['turns'][-1]['board'] == body.startBoard:
-        game['turns'].append(turn)
-        db.put('games', game)
-        return {
-            "game": game['_id'],
-            "board": game['turns'][-1]['board'],
-            "gameStage": game['turns'][-1]['gameStage'],
-            "request": game['request'],
-            "color": color,
-        }
     else:
-        b.abort(404, "Move does not match")
+        turn = {
+            'moves': body.moves,
+            'gameStage': body.endGameStage,
+            'board': body.endBoard,
+        }
+        if game['final_game_stage'] is not None:
+            b.abort(404, "Can't post move, game over")
+            return
+        elif game['turns'][-1]['board'] == body.startBoard:
+            game['turns'].append(turn)
+            db.put('games', game)
+            return _game_info(game, color)
+        else:
+            b.abort(404, "Move not valid")
+            return
+
+@b.post('/1/update')
+@b.auth_basic(_auth_check)
+def post_update():
+    '''
+    handles requests (draw, takebacks), game status, & resignations
+    returns GameInfo (defined in Api.elm)
+    '''
+    body = b.request
+    user,_ = b.request.auth
+    game_id = body.json['game']
+    try:
+        game, color = _get_game_info(game_id, user)
+    except  ValueError as e:
+        print(e, file=sys.stderr)
+        b.abort(404, str(e))
         return
+    else:
+
+        if game['final_game_stage'] is not None:
+            b.abort(404, "Can't update. Game over")
+            return
+
+        if 'takeback_requested' in body.json:
+            game['request'] = 'takeback_requested'
+
+        if 'draw_offered' in body.json:
+            game['request'] = 'draw_offered'
+
+        if 'accept_takeback' in body.json:
+            if len(game['turns']) > 1:
+                game['turns'] = turns[:-1]
+            game['request'] = "no_request"
+
+        if 'resign' in body.json:
+            if color == 'white':
+                game['final_game_stage'] = 'blackwon'
+            else:
+                game['final_game_stage'] = 'whitewon'
+            game['request'] = "no_request"
+
+        if 'accept_draw' in body.json:
+            game['final_game_stage'] = 'draw'
+            game['request'] = "no_request"
+
+        db.put('games', game)
+
+        return _game_info(game, color)
 
 DIRNAME = os.path.dirname(os.path.realpath(__file__))
 

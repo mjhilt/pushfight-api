@@ -198,9 +198,9 @@ class Tiny(Base):
         old = table.get(where(key) == qval)
         _id = value.get('_id')
         if old:
-            if _id is not None and _id != old['doc_id']:
+            if _id is not None and _id != old['_id']:
                 raise ValueError
-            table.upsert(value, where('doc_id') == _id)
+            table.upsert(value, where('_id') == _id)
             doc_id = _id
         else:
             doc_id = table.insert(value)
