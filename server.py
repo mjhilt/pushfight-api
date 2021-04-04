@@ -350,6 +350,7 @@ def post_move():
             b.abort(404, "Can't post move, game over")
             return
         elif game['turns'][-1]['board'] == body.startBoard:
+            print("Doing move", file=sys.stderr)
             game['turns'].append(turn)
             db.put('games', game)
             return _game_info(game, color)
@@ -388,6 +389,7 @@ def post_update():
         if 'accept_takeback' in body.json:
             if len(game['turns']) > 1:
                 game['turns'] = turns[:-1]
+                game['gameStage'] = game['turns'][-1]['gameStage']
             game['request'] = "no_request"
 
         if 'resign' in body.json:
