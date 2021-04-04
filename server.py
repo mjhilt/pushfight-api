@@ -248,6 +248,10 @@ def start_impl(opponent=None):
         # "timer": None, # TODO
     }
 
+def _log_abort(code, msg):
+    print(msg, file=sys.stderr)
+    b.abort(code, msg)
+
 @b.post('/1/game/join')
 @b.auth_basic(_auth_check)
 def post_game_join():
@@ -256,13 +260,25 @@ def post_game_join():
     '''
     user,_ = b.request.auth
     body = b.request.json
+    # print('post_game_join', body)
     gid = body.get('game')
     games = db.get('games', gid)
     if len(games)==0:
-        b.abort(404, 'Game {} not found'.format(gid))
+        return _log_abort(404, 'Game {} not found'.format(gid))
 
     game = games[0]
+    if game['white_player'] is None:
+        game['white_player'] = user
+    elif game['black_player'] is None:
+        game['black_player'] = user
+    else:
+        return _log_abort(404, 'Game {} already started'.format(gid))
 
+    game['gameStage'] = 'whitesetup'
+
+    db.put('games', game)
+
+    # game
     return {
         "game": game['_id'],
     }
