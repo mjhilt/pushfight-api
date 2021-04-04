@@ -133,7 +133,7 @@ viewMyGames myGames =
 
 viewMyGamesImpl : Api.OpenGame -> Html Msg
 viewMyGamesImpl game =
-    div [] [ button [ onClick (JoinAndLoadGame game.gameId) ] [ "Load Vs " ++ game.opponent |> text ] ]
+    div [] [ button [ onClick (LoadGame game.gameId) ] [ "Vs " ++ game.opponent |> text ] ]
 
 
 viewOpenGames : List Api.OpenGame -> Html Msg
@@ -144,7 +144,7 @@ viewOpenGames openGames =
 
 viewOpenGamesImpl : Api.OpenGame -> Html Msg
 viewOpenGamesImpl game =
-    div [] [ button [ onClick (LoadGame game.gameId) ] [ "Join And Load Vs" ++ game.opponent |> text ] ]
+    div [] [ button [ onClick (JoinAndLoadGame game.gameId) ] [ "Vs " ++ game.opponent |> text ] ]
 
 
 checkbox : msg -> String -> Html msg
