@@ -82,22 +82,22 @@ decodeGameStageImpl gs =
         "waitingforplayers" ->
             Decode.succeed WaitingForPlayers
 
-        "whiteSetup" ->
+        "whitesetup" ->
             Decode.succeed WhiteSetup
 
-        "blackSetup" ->
+        "blacksetup" ->
             Decode.succeed BlackSetup
 
-        "whiteTurn" ->
+        "whiteturn" ->
             Decode.succeed WhiteTurn
 
-        "blackTurn" ->
+        "blackturn" ->
             Decode.succeed BlackTurn
 
-        "whiteWon" ->
+        "whitewon" ->
             Decode.succeed WhiteWon
 
-        "blackWon" ->
+        "blackwon" ->
             Decode.succeed BlackWon
 
         "draw" ->
@@ -116,22 +116,22 @@ encode gs =
             Encode.string "waitingforplayers"
 
         WhiteSetup ->
-            Encode.string "whiteSetup"
+            Encode.string "whitesetup"
 
         BlackSetup ->
-            Encode.string "blackSetup"
+            Encode.string "blacksetup"
 
         WhiteTurn ->
-            Encode.string "whiteTurn"
+            Encode.string "whiteturn"
 
         BlackTurn ->
-            Encode.string "blackTurn"
+            Encode.string "blackturn"
 
         WhiteWon ->
-            Encode.string "whiteWon"
+            Encode.string "whitewon"
 
         BlackWon ->
-            Encode.string "blackWon"
+            Encode.string "blackwon"
 
         Draw ->
             Encode.string "draw"

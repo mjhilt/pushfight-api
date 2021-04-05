@@ -283,15 +283,15 @@ join gid msg cred =
 
 
 move : GameStage.GameStage -> Board.Board -> List Move.Move -> GameStage.GameStage -> Board.Board -> String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
-move startGameStage board moves finalGameStage finalBoard gameId cred msg =
+move startGameStage startBoard moves endGameStage endBoard gameId cred msg =
     let
         body =
             Encode.object
-                [ ( "startBoard", Board.encode board )
+                [ ( "startBoard", Board.encode startBoard )
                 , ( "moves", Encode.list Move.encode moves )
-                , ( "finalBoard", Board.encode finalBoard )
+                , ( "endBoard", Board.encode endBoard )
                 , ( "startGameStage", GameStage.encode startGameStage )
-                , ( "finalGameStage", GameStage.encode finalGameStage )
+                , ( "endGameStage", GameStage.encode endGameStage )
                 , ( "game", Encode.string gameId )
                 , ( "timer", Encode.null )
                 ]

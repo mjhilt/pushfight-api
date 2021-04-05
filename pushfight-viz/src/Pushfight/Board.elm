@@ -210,18 +210,10 @@ getPushPos board start dir pos =
 
 isValidPush : List Int -> Dir -> Bool
 isValidPush pos dir =
-    let
-        _ =
-            Debug.log "zoop" pos
-    in
     if List.length pos < 2 then
         False
 
     else
-        let
-            _ =
-                Debug.log "wakka" ( pos, dir )
-        in
         case ( dir, pos ) of
             ( Up, p :: ps ) ->
                 List.member p [ 3, 4, 5, 6, 7 ]
@@ -299,8 +291,8 @@ pieceOutOfBounds board =
     , board.bm2
     ]
         |> List.map isInBoard
-        |> List.foldl (||) False
-
+        |> List.foldl (&&) True
+        |> not
 
 isReachable : Board -> Int -> Int -> Bool
 isReachable board from to =
@@ -327,9 +319,6 @@ movePiece board from to =
 pushPiece : Board -> Int -> Int -> Maybe Board
 pushPiece board from to =
     let
-        _ =
-            Debug.log "wakka" ( from, to )
-
         dir =
             dirFromDelta (to - from)
     in

@@ -110,10 +110,21 @@ update msg model =
                                 ( SendNoOp, _ ) ->
                                     Cmd.none
 
-                                ( SendTurnEnded ( finalBoard, finalGameStage ), Just cred ) ->
+                                ( SendTurnEnded (board, gameStage), Just cred ) ->
+                                    let
+                                        _ = Debug.log "End Turn" ()
+                                    in
+                                --    --Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred GameFromServer
+                                    Api.move game.gameStage game.board game.moves gameStage board model.gameId cred GameFromServer
+
+
+                                ( SendUpdatedBoard ( board ), Just cred ) ->
                                     --case Session.cred model.session of
                                     --Just cred ->
-                                    Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred GameFromServer
+                                    let
+                                        _ = Debug.log "Updated Board" ()
+                                    in
+                                    Api.move game.gameStage game.board game.moves game.gameStage board model.gameId cred GameFromServer
 
                                 --Nothing ->
                                 --Cmd.none

@@ -1,4 +1,5 @@
 module Pushfight.Game exposing (Model, Msg, OutMsg(..), init, subscriptions, update, view)
+import Debug
 
 import Html
 import Html.Events
@@ -75,6 +76,7 @@ type Msg
 type OutMsg
     = SendNoOp
     | SendTurnEnded ( Board.Board, GameStage )
+    | SendUpdatedBoard ( Board.Board )
     | SendRequestTakeback
     | SendOfferDraw
     | SendAcceptDraw
@@ -130,14 +132,14 @@ handleEndTurn : List Move -> Board.Board -> GameStage -> Color -> Maybe ( Board.
 handleEndTurn moves board gameStage color =
     let
         newBoard =
-            doMoves moves board
+            Debug.log "newBoard" (doMoves moves board)
 
         lastMovePush =
-            case moves |> List.reverse |> List.head of
-                Just lastMove ->
-                    Board.anchorAt board lastMove.to
+            case (moves |> List.reverse |> List.head, newBoard) of
+                (Just lastMove, Just b) ->
+                    Board.anchorAt b lastMove.to
 
-                Nothing ->
+                _ ->
                     False
 
         pieceOutOfBounds =
@@ -145,7 +147,16 @@ handleEndTurn moves board gameStage color =
 
         moveLen =
             List.length moves
+        _ =
+            Debug.log "1" ( (moveLen > 0) && (moveLen <= 3) )
+        _ =
+            Debug.log "2" color
+        _ =
+            Debug.log "3" lastMovePush
+        _ =
+            Debug.log "4" pieceOutOfBounds
     in
+    -- TODO check side on setup
     case ( newBoard, gameStage, ( ( (moveLen > 0) && (moveLen <= 3), color ), ( lastMovePush, pieceOutOfBounds ) ) ) of
         ( Just b, WhiteSetup, ( ( _, White ), ( False, False ) ) ) ->
             Just ( b, BlackSetup )
@@ -231,11 +242,21 @@ update msg model =
             in
             case finishedDrag of
                 Just drag ->
-                    --let
-                    --    newModel =
-                    --in
-                    --(newModel, NoOp)
-                    ( handleDrag model drag dragState, SendNoOp )
+                    let
+                        newModel = handleDrag model drag dragState
+                        --newBoard = doMoves newModel.moves newModel.board
+                        outMsg = SendNoOp
+                            --case newBoard of
+                            --    Just board ->
+                            --        if newModel.board == board then
+                            --            Debug.log "No op I guess" SendNoOp
+                            --        else
+                            --            --Debug.log "Updating board" (SendUpdatedBoard newModel.board newModel.moves board)
+                            --            Debug.log "Updating board" (SendUpdatedBoard board)
+                            --    Nothing ->
+                            --        SendNoOp
+                    in
+                    (newModel , outMsg )
 
                 Nothing ->
                     ( { model | dragState = dragState }, SendNoOp )
@@ -247,6 +268,10 @@ update msg model =
                     ( model, SendTurnEnded ( board, gameStage ) )
 
                 Nothing ->
+                    let
+                        _ =
+                            Debug.log "Failed to end turn" ()
+                    in
                     ( model, SendNoOp )
 
         Undo ->
