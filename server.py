@@ -275,6 +275,7 @@ def post_game_join():
         return _log_abort(404, 'Game {} already started'.format(gid))
 
     game['gameStage'] = 'whitesetup'
+    game['turns'][-1]['gameStage'] = 'whitesetup'
 
     db.put('games', game)
 
@@ -331,9 +332,9 @@ def post_move():
     Record a move.
     Returns GameInfo (defined in Api.elm)
     '''
-    body = b.request
+    body = b.request.json
     user,_ = b.request.auth
-    game_id = body.game
+    game_id = body['game']
     try:
         game, color = _get_game_info(game_id, user)
     except ValueError as e:
@@ -342,21 +343,36 @@ def post_move():
         return
     else:
         turn = {
-            'moves': body.moves,
-            'gameStage': body.endGameStage,
-            'board': body.endBoard,
+            'moves': body['moves'],
+            'gameStage': body['endGameStage'],
+            'board': body['endBoard'],
         }
         if game['final_game_stage'] is not None:
-            b.abort(404, "Can't post move, game over")
-            return
-        elif game['turns'][-1]['board'] == body.startBoard:
-            print("Doing move", file=sys.stderr)
+            return _log_abort(404, "Can't post move, game over")
+
+        # if game['turns'][-1]['board'] != body['startBoard']:
+        #     return _log_abort(404, "Move not valid")
+
+        # if body['json']['final']:
+        #     if game['turns'][-1]['board'] == body['startBoard']:
+        #         game['turns'].append(turn)
+        #     elif game['turns'][-2]['board'] == body['startBoard']:
+        #         game['turns'][-1] = turn
+        #     else:
+        #         _log_abort(404, "Move not valid")
+        # else:
+
+        if game['turns'][-1]['board'] == body['startBoard']:
             game['turns'].append(turn)
-            db.put('games', game)
-            return _game_info(game, color)
+        elif game['turns'][-2]['board'] == body['startBoard']:
+            game['turns'][-1] = turn
         else:
-            b.abort(404, "Move not valid")
-            return
+            _log_abort(404, "Move not valid")
+        db.put('games', game)
+        return _game_info(game, color)
+        # else:
+            # b.abort(404, "Move not valid")
+            # return
 
 @b.post('/1/update')
 @b.auth_basic(_auth_check)
