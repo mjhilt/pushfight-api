@@ -76,8 +76,9 @@ type Msg
     = BackToLobby
     | GotSession Session
     | GotGameMsg Game.Msg
-      --| GameFromServer Wakka
     | GameFromServer (Result Http.Error Api.GameInfo)
+    --| IntermediateGameFromServer (Result Http.Error Api.GameInfo)
+    --| FinalGameFromServer (Result Http.Error Api.GameInfo)
       --| UpdateRequest (Result Http.Error Request)
     | CheckServer Time.Posix
 
@@ -110,21 +111,22 @@ update msg model =
                                 ( SendNoOp, _ ) ->
                                     Cmd.none
 
-                                ( SendTurnEnded (board, gameStage), Just cred ) ->
+                                ( SendTurnEnded (board, moves, gameStage), Just cred ) ->
                                     let
                                         _ = Debug.log "End Turn" ()
                                     in
                                 --    --Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred GameFromServer
-                                    Api.move game.gameStage game.board game.moves gameStage board model.gameId cred GameFromServer
+                                    --Api.move game.gameStage game.board game.moves gameStage board model.gameId cred GameFromServer
+                                    Api.move game.gameStage game.board moves gameStage board model.gameId (game.turn + 1) True cred GameFromServer
 
 
-                                ( SendUpdatedBoard ( board ), Just cred ) ->
+                                ( SendUpdatedBoard ( board, moves ), Just cred ) ->
                                     --case Session.cred model.session of
                                     --Just cred ->
                                     let
                                         _ = Debug.log "Updated Board" ()
                                     in
-                                    Api.move game.gameStage game.board game.moves game.gameStage board model.gameId cred GameFromServer
+                                    Api.move game.gameStage game.board moves game.gameStage board model.gameId game.turn False cred GameFromServer
 
                                 --Nothing ->
                                 --Cmd.none
@@ -160,6 +162,7 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+
         GameFromServer (Ok gameFromServer) ->
             let
                 updatedGame =
@@ -170,12 +173,52 @@ update msg model =
                                 , gameStage = gameFromServer.gameStage
                                 , color = gameFromServer.color
                                 , request = gameFromServer.request
+                                , moves = gameFromServer.moves
+                                , turn = gameFromServer.turn
                             }
 
                         Loading ->
                             Game.init gameFromServer.board gameFromServer.gameStage gameFromServer.color [] 50 Request.NoRequest
             in
             ( { model | game = Loaded updatedGame }, Cmd.none )
+
+        --IntermediateGameFromServer (Ok gameFromServer) ->
+        --    let
+        --        updatedGame =
+        --            case model.game of
+        --                Loaded game ->
+        --                    { game
+        --                        | board = gameFromServer.board
+        --                        , gameStage = gameFromServer.gameStage
+        --                        , color = gameFromServer.color
+        --                        , request = gameFromServer.request
+        --                        , moves = gameFromServer.moves
+        --                        --, turn = gameFromServer.turn
+        --                    }
+
+        --                Loading ->
+        --                    Game.init gameFromServer.board gameFromServer.gameStage gameFromServer.color [] 50 Request.NoRequest
+        --    in
+        --    ( { model | game = Loaded updatedGame }, Cmd.none )
+
+        --FinalGameFromServer (Ok gameFromServer) ->
+        --    let
+        --        updatedGame =
+        --            case model.game of
+        --                Loaded game ->
+        --                    { game
+        --                        | board = gameFromServer.board
+        --                        , gameStage = gameFromServer.gameStage
+        --                        , color = gameFromServer.color
+        --                        , request = gameFromServer.request
+        --                        , moves = gameFromServer.moves
+        --                        , turn = gameFromServer.turn
+        --                    }
+
+        --                Loading ->
+        --                    Game.init gameFromServer.board gameFromServer.gameStage gameFromServer.color [] 50 Request.NoRequest
+        --    in
+        --    ( { model | game = Loaded updatedGame }, Cmd.none )
 
         --init : Board.Board -> GameStage -> Color -> List Move -> Int -> Request -> Model
         --type alias Model =
@@ -195,6 +238,10 @@ update msg model =
         --( model,  )
         GameFromServer (Err error) ->
             Debug.log (String.join " | " (Api.decodeErrors error)) ( model, Cmd.none )
+        --IntermediateGameFromServer (Err error) ->
+        --    Debug.log (String.join " | " (Api.decodeErrors error)) ( model, Cmd.none )
+        --FinalGameFromServer (Err error) ->
+        --    Debug.log (String.join " | " (Api.decodeErrors error)) ( model, Cmd.none )
 
 
 

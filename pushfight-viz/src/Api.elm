@@ -10,6 +10,7 @@ import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, stri
 import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import Pushfight.Board as Board exposing (Board)
+--import Pushfight.Move as Move exposing (Move)
 import Pushfight.Color as Color exposing (Color(..))
 import Pushfight.GameStage as GameStage exposing (GameStage)
 import Pushfight.Move as Move exposing (Move)
@@ -205,6 +206,8 @@ type alias GameInfo =
     , gameStage : GameStage
     , request : Request
     , board : Board
+    , moves: List Move
+    , turn: Int
     }
 
 
@@ -243,12 +246,14 @@ encodeGameStart gc =
 
 gameInfoDecoder : Decoder GameInfo
 gameInfoDecoder =
-    Decode.map5 GameInfo
+    Decode.map7 GameInfo
         Color.decode
         (field "game" string)
         GameStage.decode
         Request.decode
         (field "board" Board.decode)
+        (field "moves" (Decode.list Move.decode))
+        (field "turn" Decode.int)
 
 
 
@@ -282,8 +287,8 @@ join gid msg cred =
 -- make move
 
 
-move : GameStage.GameStage -> Board.Board -> List Move.Move -> GameStage.GameStage -> Board.Board -> String -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
-move startGameStage startBoard moves endGameStage endBoard gameId cred msg =
+move : GameStage.GameStage -> Board.Board -> List Move.Move -> GameStage.GameStage -> Board.Board -> String -> Int -> Bool -> Cred -> (Result Http.Error GameInfo -> msg) -> Cmd msg
+move startGameStage startBoard moves endGameStage endBoard gameId turn final cred msg =
     let
         body =
             Encode.object
@@ -293,7 +298,9 @@ move startGameStage startBoard moves endGameStage endBoard gameId cred msg =
                 , ( "startGameStage", GameStage.encode startGameStage )
                 , ( "endGameStage", GameStage.encode endGameStage )
                 , ( "game", Encode.string gameId )
+                , ( "turn", Encode.int turn )
                 , ( "timer", Encode.null )
+                , ( "final", Encode.bool final )
                 ]
                 |> Http.jsonBody
     in

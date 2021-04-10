@@ -26,6 +26,7 @@ type alias Model =
     , color : Color
     , orientation : Orientation.Orientation
     , moves : List Move
+    , turn : Int
     , dragState : DragState.Model
     , gridSize : Int
     , request : Request
@@ -55,6 +56,7 @@ init board gameStage color moves gridSize request =
     , dragState = DragState.init
     , gridSize = gridSize
     , request = request
+    , turn = 1
     }
 
 
@@ -75,8 +77,8 @@ type Msg
 
 type OutMsg
     = SendNoOp
-    | SendTurnEnded ( Board.Board, GameStage )
-    | SendUpdatedBoard ( Board.Board )
+    | SendTurnEnded ( Board.Board, List Move, GameStage )
+    | SendUpdatedBoard ( Board.Board, List Move )
     | SendRequestTakeback
     | SendOfferDraw
     | SendAcceptDraw
@@ -244,17 +246,17 @@ update msg model =
                 Just drag ->
                     let
                         newModel = handleDrag model drag dragState
-                        --newBoard = doMoves newModel.moves newModel.board
-                        outMsg = SendNoOp
-                            --case newBoard of
-                            --    Just board ->
-                            --        if newModel.board == board then
-                            --            Debug.log "No op I guess" SendNoOp
-                            --        else
-                            --            --Debug.log "Updating board" (SendUpdatedBoard newModel.board newModel.moves board)
-                            --            Debug.log "Updating board" (SendUpdatedBoard board)
-                            --    Nothing ->
-                            --        SendNoOp
+                        newBoard = doMoves newModel.moves newModel.board
+                        outMsg =
+                            case newBoard of
+                                Just board ->
+                                    --if newModel.board == board then
+                                    --    Debug.log "No op I guess" SendNoOp
+                                    --else
+                                    --    --Debug.log "Updating board" (SendUpdatedBoard newModel.board newModel.moves board)
+                                    Debug.log "Updating board" (SendUpdatedBoard (board, newModel.moves) )
+                                Nothing ->
+                                    SendNoOp
                     in
                     (newModel , outMsg )
 
@@ -265,7 +267,7 @@ update msg model =
             case handleEndTurn model.moves model.board model.gameStage model.color of
                 Just ( board, gameStage ) ->
                     --({model|board=board,gameStage=gameStage}, SendTurnEnded(board, gameStage))
-                    ( model, SendTurnEnded ( board, gameStage ) )
+                    ( model, SendTurnEnded ( board, model.moves, gameStage ) )
 
                 Nothing ->
                     let
