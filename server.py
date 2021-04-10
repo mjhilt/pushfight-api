@@ -362,7 +362,7 @@ def post_move():
             'moves': body['moves'],
             'turn_number': turn_number,
         }
-        print(turn)
+        # print(turn)
         game['turns'][-1] = turn
         if body['final']:
             next_turn = {
@@ -372,6 +372,7 @@ def post_move():
                 'moves': [],
                 'turn_number': turn_number + 1
             }
+            game['gameStage'] = next_turn['gameStage']
             game['turns'].append(next_turn)
             if body['finalGameStage'] in ('whitewon', 'blackwon', 'draw'):
                 game['game_over'] = body['finalGameStage']
@@ -419,34 +420,36 @@ def post_update():
         return
     else:
 
-        if game['game_over'] is not None:
-            b.abort(404, "Can't update. Game over")
-            return
+        if game['game_over'] is None:
+            print('Not applying update. Game over',file=sys.stderr)
+            if 'takeback_requested_white' in body.json:
+                game['request'] = 'takeback_requested_white'
+            if 'takeback_requested_black' in body.json:
+                game['request'] = 'takeback_requested_black'
+            if 'draw_offered_white' in body.json:
+                game['request'] = 'draw_offered_white'
+            if 'draw_offered_black' in body.json:
+                game['request'] = 'draw_offered_black'
 
-        if 'takeback_requested' in body.json:
-            game['request'] = 'takeback_requested'
+            if 'accept_takeback' in body.json:
+                if len(game['turns']) > 1:
+                    game['turns'] = game['turns'][:-1]
+                    game['gameStage'] = game['turns'][-1]['gameStage']
+                    game['turns'][-1]['moves'] = []
+                game['request'] = "no_request"
 
-        if 'draw_offered' in body.json:
-            game['request'] = 'draw_offered'
+            if 'resign' in body.json:
+                if color == 'white':
+                    game['game_over'] = 'blackwon'
+                else:
+                    game['game_over'] = 'whitewon'
+                game['request'] = "no_request"
 
-        if 'accept_takeback' in body.json:
-            if len(game['turns']) > 1:
-                game['turns'] = turns[:-1]
-                game['gameStage'] = game['turns'][-1]['gameStage']
-            game['request'] = "no_request"
+            if 'accept_draw' in body.json:
+                game['game_over'] = 'draw'
+                game['request'] = "no_request"
 
-        if 'resign' in body.json:
-            if color == 'white':
-                game['game_over'] = 'blackwon'
-            else:
-                game['game_over'] = 'whitewon'
-            game['request'] = "no_request"
-
-        if 'accept_draw' in body.json:
-            game['game_over'] = 'draw'
-            game['request'] = "no_request"
-
-        db.put('games', game)
+            db.put('games', game)
 
         return _game_info(game, color)
 
