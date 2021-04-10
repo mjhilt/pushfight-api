@@ -4,7 +4,7 @@ import Debug
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
-import Set
+import Set exposing (Set)
 
 
 
@@ -332,9 +332,8 @@ pieceOutOfBounds board =
         |> List.foldl (&&) True
         |> not
 
-isReachable : Board -> Int -> Int -> Bool
-isReachable board from to =
-    not (isPiece board to) && isInBoard to
+--isReachable : Board -> Int -> Int -> Bool
+--isReachable board from to =
 
 
 
@@ -407,6 +406,51 @@ move board from to =
         _ ->
             Nothing
 
+
+getNeighbors : Int -> Set Int
+getNeighbors at =
+    List.filter
+        isInBoard [at + 10, at - 10, at +1, at - 1]
+    |> Set.fromList
+
+breadthFirstSearchImpl : List Int -> Set Int -> List Int -> Set Int
+breadthFirstSearchImpl unexplored occupied explored =
+    case unexplored of
+        [] ->
+            Set.fromList explored
+        x :: xs ->
+            let
+                neighbors = getNeighbors x
+                unexploredNeighbors = Set.diff (Set.diff neighbors (Set.fromList explored)) occupied
+                toExplore = unexploredNeighbors
+                    |> Set.toList
+                    |> List.append xs
+            in
+                breadthFirstSearchImpl toExplore occupied (x :: explored)
+
+breadthFirstSearch : Int -> Set Int -> Set Int
+breadthFirstSearch start occupied =
+    breadthFirstSearchImpl [start] occupied []
+
+isReachable : Board -> Int -> Int -> Bool
+isReachable board from to =
+    let
+        occupied =
+            [ board.wp1
+            , board.wp2
+            , board.wp3
+            , board.wm1
+            , board.wm2
+            , board.bp1
+            , board.bp2
+            , board.bp3
+            , board.bm1
+            , board.bm2
+            ] |> Set.fromList
+        validMoves = breadthFirstSearch from occupied
+    in
+    (Set.member to validMoves) && (not (isPiece board to)) && (isInBoard to)
+    
 
 anchorAt : Board -> Int -> Bool
 anchorAt board at =
