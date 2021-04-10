@@ -79,8 +79,9 @@ type OutMsg
     = SendNoOp
     | SendTurnEnded ( Board.Board, List Move, GameStage )
     | SendUpdatedBoard ( Board.Board, List Move )
-    | SendRequestTakeback
-    | SendOfferDraw
+    --| SendRequestTakeback
+    --| SendOfferDraw
+    | SendRequest Request
     | SendAcceptDraw
     | SendAcceptTakeback
     | SendResign
@@ -129,20 +130,22 @@ doMoves moves board =
                 Nothing ->
                     Nothing
 
+lastMovePush : List Move -> Board.Board -> Bool
+lastMovePush moves board =
+    let
+        newBoard = (doMoves moves board)
+    in
+    case (moves |> List.reverse |> List.head, newBoard) of
+        (Just lastMove, Just b) ->
+            Board.anchorAt b lastMove.to
+
+        _ ->
+            False
 
 handleEndTurn : List Move -> Board.Board -> GameStage -> Color -> Maybe ( Board.Board, GameStage )
 handleEndTurn moves board gameStage color =
     let
-        newBoard =
-            Debug.log "newBoard" (doMoves moves board)
-
-        lastMovePush =
-            case (moves |> List.reverse |> List.head, newBoard) of
-                (Just lastMove, Just b) ->
-                    Board.anchorAt b lastMove.to
-
-                _ ->
-                    False
+        newBoard = (doMoves moves board)
 
         pieceOutOfBounds =
             Board.pieceOutOfBounds board
@@ -153,13 +156,13 @@ handleEndTurn moves board gameStage color =
             Debug.log "1" ( (moveLen > 0) && (moveLen <= 3) )
         _ =
             Debug.log "2" color
-        _ =
-            Debug.log "3" lastMovePush
+        --_ =
+        --    Debug.log "3" lastMovePush
         _ =
             Debug.log "4" pieceOutOfBounds
     in
     -- TODO check side on setup
-    case ( newBoard, gameStage, ( ( (moveLen > 0) && (moveLen <= 3), color ), ( lastMovePush, pieceOutOfBounds ) ) ) of
+    case ( newBoard, gameStage, ( ( (moveLen > 0) && (moveLen <= 3), color ), ( lastMovePush moves board, pieceOutOfBounds ) ) ) of
         ( Just b, WhiteSetup, ( ( _, White ), ( False, False ) ) ) ->
             Just ( b, BlackSetup )
 
@@ -209,9 +212,10 @@ handleDrag model drag dragState =
         newMove =
             getDragFromToIX model.orientation drag model.gridSize
 
-        --board = doMoves model.moves model.board |> Maybe.withDefault model.board
+        currentBoard = doMoves model.moves model.board |> Maybe.withDefault model.board
         newMoves =
             List.append model.moves [ newMove ]
+        newBoard = doMoves newMoves model.board |> Maybe.withDefault model.board
 
         --case List.reverse model.moves of
         --    --[] ->
@@ -221,12 +225,22 @@ handleDrag model drag dragState =
         --            --List.append (List.reverse otherMoves) [ newMove ]
         --        --else
         --        List.append model.moves [ newMove ]
-        isValid =
-            True
-
-        --(Board.isWhitePiece model.board from && (model.color == White)) || (Board.isBlackPiece model.board from && (model.color == Black))
+        isValidColor =
+            (Board.isWhitePiece currentBoard newMove.from && (model.color == White)) || (Board.isBlackPiece currentBoard newMove.from && (model.color == Black))
+        moveInBounds =
+            Board.isInBoard newMove.to
+        validMove =
+            case model.gameStage of
+                WhiteSetup ->
+                    Board.validWhiteSetup newBoard
+                BlackSetup ->
+                    Board.validBlackSetup newBoard
+                _ ->
+                    True
+        --couldEndTurn =
+        --    handleEndTurn moves board gameStage color
     in
-    case ( isValid, doMoves newMoves model.board ) of
+    case ( isValidColor && validMove && moveInBounds, doMoves newMoves model.board ) of
         ( True, Just _ ) ->
             { model | moves = newMoves, dragState = dragState }
 
@@ -277,13 +291,17 @@ update msg model =
                     ( model, SendNoOp )
 
         Undo ->
-            ( undoMove model, SendNoOp )
+            let
+                newModel =
+                    undoMove model
+            in
+            ( undoMove model, SendUpdatedBoard (newModel.board, newModel.moves) )
 
         RequestTakeBack ->
-            ( { model | request = TakebackRequested }, SendRequestTakeback )
+            ( model, SendRequest (TakebackRequested model.color))
 
         OfferDraw ->
-            ( { model | request = DrawOffered }, SendOfferDraw )
+            ( model, SendRequest (DrawOffered model.color))
 
         AcceptDraw ->
             ( { model | gameStage = Draw }, SendAcceptDraw )
@@ -401,15 +419,23 @@ view model =
             msg { x = floor x, y = floor y } |> DragMsg
 
         requestView =
+            let
+                noView = Html.div [] []
+            in
             case model.request of
                 NoRequest ->
-                    Html.div [] []
+                    noView
+                TakebackRequested c ->
+                    if c /= model.color then
+                        Html.div [] [ Html.button [ Html.Events.onClick AcceptTakeback ] [ Html.text "Accept Takeback" ] ]
+                    else
+                        noView
 
-                TakebackRequested ->
-                    Html.div [] [ Html.button [ Html.Events.onClick AcceptTakeback ] [ Html.text "Accept Takeback" ] ]
-
-                DrawOffered ->
-                    Html.div [] [ Html.button [ Html.Events.onClick AcceptDraw ] [ Html.text "Accept Draw" ] ]
+                DrawOffered c ->
+                    if c /= model.color then
+                        Html.div [] [ Html.button [ Html.Events.onClick AcceptDraw ] [ Html.text "Accept Draw" ] ]
+                    else
+                        noView
     in
     Html.div []
         [ Html.text title

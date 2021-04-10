@@ -117,7 +117,7 @@ update msg model =
                                     in
                                 --    --Api.move game.gameStage game.board game.moves finalGameStage finalBoard model.gameId cred GameFromServer
                                     --Api.move game.gameStage game.board game.moves gameStage board model.gameId cred GameFromServer
-                                    Api.move game.gameStage game.board moves gameStage board model.gameId (game.turn + 1) True cred GameFromServer
+                                    Api.move game.gameStage game.board moves gameStage board model.gameId (game.turn) True cred GameFromServer
 
 
                                 ( SendUpdatedBoard ( board, moves ), Just cred ) ->
@@ -130,11 +130,11 @@ update msg model =
 
                                 --Nothing ->
                                 --Cmd.none
-                                ( SendRequestTakeback, Just cred ) ->
-                                    Api.update "takeback_requested" model.gameId cred GameFromServer
+                                ( SendRequest r, Just cred ) ->
+                                    Api.update (Request.toString r) model.gameId cred GameFromServer
 
-                                ( SendOfferDraw, Just cred ) ->
-                                    Api.update "draw_offered" model.gameId cred GameFromServer
+                                --( SendOfferDraw, Just cred ) ->
+                                --    Api.update "draw_offered" model.gameId cred GameFromServer
 
                                 ( SendAcceptDraw, Just cred ) ->
                                     Api.update "accept_draw" model.gameId cred GameFromServer

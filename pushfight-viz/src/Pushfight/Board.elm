@@ -1,4 +1,4 @@
-module Pushfight.Board exposing (Board, anchorAt, decode, encode, isBlackPiece, isPiece, isWhitePiece, ixToXY, move, pieceOutOfBounds)
+module Pushfight.Board exposing (Board, anchorAt, decode, encode, isBlackPiece, isPiece, isWhitePiece, ixToXY, move, pieceOutOfBounds, validWhiteSetup, validBlackSetup, isInBoard)
 
 import Debug
 import Json.Decode as Decode exposing (Decoder)
@@ -276,6 +276,44 @@ isInBoard at =
     else
         False
 
+isOnWhiteSide : Int -> Bool
+isOnWhiteSide at =
+    let
+        ( x, y ) =
+            ixToXY at
+    in
+    (x < 5) && (isInBoard at)
+
+validWhiteSetup : Board -> Bool
+validWhiteSetup board =
+    [ board.wp1
+    , board.wp2
+    , board.wp3
+    , board.wm1
+    , board.wm2
+    ]
+        |> List.map isOnWhiteSide
+        |> List.foldl (&&) (board.anchor == Nothing)
+
+
+isOnBlackSide : Int -> Bool
+isOnBlackSide at =
+    let
+        ( x, y ) =
+            ixToXY at
+    in
+    (x > 4) && (isInBoard at)
+
+validBlackSetup : Board -> Bool
+validBlackSetup board =
+    [ board.bp1
+    , board.bp2
+    , board.bp3
+    , board.bm1
+    , board.bm2
+    ]
+        |> List.map isOnBlackSide
+        |> List.foldl (&&) (board.anchor == Nothing)
 
 pieceOutOfBounds : Board -> Bool
 pieceOutOfBounds board =
