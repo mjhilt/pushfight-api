@@ -169,7 +169,7 @@ def get_my_games():
         if _get_game_stage(g) == 'waitingforplayers':
             continue
         # don't show completed games
-        if g['final_game_stage'] is not None:
+        if g['game_over'] is not None:
             continue
         if color == 'white_player':
             opponent = g['black_player']
@@ -189,13 +189,14 @@ def make_game(user1, user2, color='white', timed=False):
         'moves': [],
         'gameStage': 'whitesetup' if user2 is not None else 'waitingforplayers',
         'board': init_board(),
+        'turn_number': 1,
     }
     return {
             "_id": _id,
             "white_player": user1 if color == 'white' else user2,
             "black_player": user2 if color == 'white' else user1,
             "turns": [turn],
-            "final_game_stage": None,
+            "game_over": None,
             'gameStage': turn['gameStage'],
             'request': "no_request"
         }
@@ -245,6 +246,7 @@ def start_impl(opponent=None):
         "gameStage": game['turns'][-1]['gameStage'],
         "request": game['request'],
         "color": color,
+        "moves": game['turns'][-1]['moves']
         # "timer": None, # TODO
     }
 
@@ -273,8 +275,9 @@ def post_game_join():
         game['black_player'] = user
     else:
         return _log_abort(404, 'Game {} already started'.format(gid))
-
-    game['gameStage'] = 'whitesetup'
+    # game['gameOver'] = None
+    # game['']
+    # game['gameStage'] = 'whitesetup'
     game['turns'][-1]['gameStage'] = 'whitesetup'
 
     db.put('games', game)
@@ -308,8 +311,9 @@ def _get_game_stage(game):
     helper to parse game object and return definitive game stage
     TODO having gameStage within the turn and twice on top feels *horrible*
     '''
-    if 'final_game_stage' in game and game['final_game_stage'] is not None:
-        return game['final_game_stage']
+    # if 'game_over' in game and game['game_over'] is not None:
+    if game['game_over'] is not None:
+        return game['game_over']
     else:
         return game['turns'][-1]['gameStage']
 
@@ -320,9 +324,11 @@ def _game_info(game, color):
     return {
         "game": game['_id'],
         "board": game['turns'][-1]['board'],
+        "moves": game['turns'][-1]['moves'],
         "gameStage": _get_game_stage(game),
         "request": game['request'],
         "color": color,
+        "turn": game['turns'][-1]['turn_number'],
     }
 
 @b.post('/1/move')
@@ -335,20 +341,41 @@ def post_move():
     body = b.request.json
     user,_ = b.request.auth
     game_id = body['game']
+    turn_number = body['turn']
+    print('moving', turn_number)
     try:
         game, color = _get_game_info(game_id, user)
     except ValueError as e:
         print(e, file=sys.stderr)
-        b.abort(404, "User not associated with game")
+        _log_abort(404, "User not associated with game")
         return
     else:
+        # assert :
+        if turn_number != game['turns'][-1]['turn_number']:
+            _log_abort(404, "Turn out of order")
+            return
+
         turn = {
             'moves': body['moves'],
-            'gameStage': body['endGameStage'],
-            'board': body['endBoard'],
+            'gameStage': body['startGameStage'],
+            'board': body['startBoard'],
+            'moves': body['moves'],
+            'turn_number': turn_number,
         }
-        if game['final_game_stage'] is not None:
-            return _log_abort(404, "Can't post move, game over")
+        print(turn)
+        game['turns'][-1] = turn
+        if body['final']:
+            next_turn = {
+                'moves': [],
+                'gameStage': body['finalGameStage'],
+                'board': body['finalBoard'],
+                'moves': [],
+                'turn_number': turn_number + 1
+            }
+            game['turns'].append(next_turn)
+            if body['finalGameStage'] in ('whitewon', 'blackwon', 'draw'):
+                game['game_over'] = body['finalGameStage']
+
 
         # if game['turns'][-1]['board'] != body['startBoard']:
         #     return _log_abort(404, "Move not valid")
@@ -362,12 +389,12 @@ def post_move():
         #         _log_abort(404, "Move not valid")
         # else:
 
-        if game['turns'][-1]['board'] == body['startBoard']:
-            game['turns'].append(turn)
-        elif game['turns'][-2]['board'] == body['startBoard']:
-            game['turns'][-1] = turn
-        else:
-            _log_abort(404, "Move not valid")
+        # if game['turns'][-1]['board'] == body['startBoard']:
+        #     game['turns'].append(turn)
+        # elif game['turns'][-2]['board'] == body['startBoard']:
+        #     game['turns'][-1] = turn
+        # else:
+        #     _log_abort(404, "Move not valid")
         db.put('games', game)
         return _game_info(game, color)
         # else:
@@ -392,7 +419,7 @@ def post_update():
         return
     else:
 
-        if game['final_game_stage'] is not None:
+        if game['game_over'] is not None:
             b.abort(404, "Can't update. Game over")
             return
 
@@ -410,13 +437,13 @@ def post_update():
 
         if 'resign' in body.json:
             if color == 'white':
-                game['final_game_stage'] = 'blackwon'
+                game['game_over'] = 'blackwon'
             else:
-                game['final_game_stage'] = 'whitewon'
+                game['game_over'] = 'whitewon'
             game['request'] = "no_request"
 
         if 'accept_draw' in body.json:
-            game['final_game_stage'] = 'draw'
+            game['game_over'] = 'draw'
             game['request'] = "no_request"
 
         db.put('games', game)
