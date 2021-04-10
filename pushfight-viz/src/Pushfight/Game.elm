@@ -142,6 +142,80 @@ lastMovePush moves board =
         _ ->
             False
 
+countPushes : List Move -> Board.Board -> Int
+countPushes moves board =
+    case moves of
+        m::ms ->
+            countPushesImpl m ms board
+        [] ->
+            0
+
+countPushesImpl : Move -> List Move -> Board.Board -> Int
+countPushesImpl move moves board =
+    let
+        newBoard = doMoves [move] board |> Maybe.withDefault board
+        isPush = Board.anchorAt newBoard move.to
+
+        --(isPush, wakka) =
+            --case newBoard of
+                --Just b ->
+                    --if Board.anchorAt newBoard move.to then
+                    --    --(1 + countPushesImpl m ms b, b)
+                    --else
+                    --    0 + countPushesImpl m ms b
+    in
+    --case (newBoard, moves) of
+    case moves of
+        m::ms ->
+            if isPush then
+                1 + countPushesImpl m ms newBoard
+            else
+                0 + countPushesImpl m ms newBoard
+
+        [] ->
+            if isPush then
+                1
+            else
+                0
+
+parseMoves: List Move -> Board.Board -> (Int, Int, Bool)
+parseMoves moves board =
+    let
+        endsWithPush = lastMovePush moves board
+        moveCount =
+            case moves of
+                m::ms ->
+                    1 + (parseMovesImpl m ms endsWithPush)
+                [] ->
+                    0
+        pushCount =
+            countPushes moves board
+        _ =
+            Debug.log "pushCount" pushCount
+        _ =
+            Debug.log "endsWithPush" endsWithPush
+    in
+    (moveCount, pushCount, endsWithPush)
+
+parseMovesImpl: Move -> List Move -> Bool -> Int
+parseMovesImpl lastMove moves endsWithPush =
+    case moves of
+        [] ->
+            0
+        [m] ->
+            if endsWithPush then
+                0
+            else
+                if lastMove.to == m.from then
+                    0
+                else
+                    1
+        m::ms ->
+            if lastMove.to == m.from then
+                0 + (parseMovesImpl m ms endsWithPush)
+            else
+                1 + (parseMovesImpl m ms endsWithPush)
+
 handleEndTurn : List Move -> Board.Board -> GameStage -> Color -> Maybe ( Board.Board, GameStage )
 handleEndTurn moves board gameStage color =
     let
@@ -150,19 +224,23 @@ handleEndTurn moves board gameStage color =
         pieceOutOfBounds =
             Board.pieceOutOfBounds board
 
-        moveLen =
-            List.length moves
+        (moveLen,pushLen,endsWithPush) =
+            parseMoves moves board
+            --List.length moves
         _ =
-            Debug.log "1" ( (moveLen > 0) && (moveLen <= 3) )
-        _ =
-            Debug.log "2" color
+            Debug.log "moveLen" moveLen
+
+        --_ =
+        --    Debug.log "1" ( (moveLen > 0) && (moveLen <= 3) )
+        --_ =
+        --    Debug.log "2" color
         --_ =
         --    Debug.log "3" lastMovePush
-        _ =
-            Debug.log "4" pieceOutOfBounds
+        --_ =
+        --    Debug.log "4" pieceOutOfBounds
     in
     -- TODO check side on setup
-    case ( newBoard, gameStage, ( ( (moveLen > 0) && (moveLen <= 3), color ), ( lastMovePush moves board, pieceOutOfBounds ) ) ) of
+    case ( newBoard, gameStage, ( ( (moveLen > 0) && (moveLen <= 3), color ), (endsWithPush&&(pushLen==1) , pieceOutOfBounds ) ) ) of
         ( Just b, WhiteSetup, ( ( _, White ), ( False, False ) ) ) ->
             Just ( b, BlackSetup )
 
@@ -216,7 +294,7 @@ handleDrag model drag dragState =
         newMoves =
             List.append model.moves [ newMove ]
         newBoard = doMoves newMoves model.board |> Maybe.withDefault model.board
-
+        (moveCount,pushCount,endsWithPush) = parseMoves newMoves model.board
         --case List.reverse model.moves of
         --    --[] ->
         --    --    [ newMove ]
@@ -235,6 +313,10 @@ handleDrag model drag dragState =
                     Board.validWhiteSetup newBoard
                 BlackSetup ->
                     Board.validBlackSetup newBoard
+                BlackTurn ->
+                    (moveCount <= 2) && ((pushCount == 0) || ((pushCount == 1) && endsWithPush))
+                WhiteTurn ->
+                    (moveCount <= 2) && ((pushCount == 0) || ((pushCount == 1) && endsWithPush))
                 _ ->
                     True
         --couldEndTurn =
@@ -384,6 +466,13 @@ view model =
 
         height =
             String.fromInt (10 * model.gridSize)
+        (moveLen, pushCount, endsWithPush) =
+            parseMoves model.moves model.board
+        pushString =
+            if endsWithPush then
+                ""
+            else
+                " and a push"
 
         title =
             case model.gameStage of
@@ -397,10 +486,10 @@ view model =
                     "Black Setup"
 
                 WhiteTurn ->
-                    "White Turn, " ++ String.fromInt (2 - List.length model.moves) ++ " moves left"
+                    "White Turn, " ++ String.fromInt (2 - moveLen) ++ " moves left" ++ pushString
 
                 BlackTurn ->
-                    "Black Turn, " ++ String.fromInt (2 - List.length model.moves) ++ " moves left"
+                    "Black Turn, " ++ String.fromInt (2 - moveLen) ++ " moves left" ++ pushString
 
                 WhiteWon ->
                     "White Won - Game Over"
@@ -438,36 +527,38 @@ view model =
                         noView
     in
     Html.div []
-        [ Html.text title
-        , Svg.svg
-            [ Svg.Attributes.width width
-            , Svg.Attributes.height height
-            , Svg.Attributes.viewBox <| "0 0 " ++ width ++ " " ++ height
+        [ Html.div [] [Html.text title]
+        , Html.div []
+            [ Svg.svg
+                [ Svg.Attributes.width width
+                , Svg.Attributes.height height
+                , Svg.Attributes.viewBox <| "0 0 " ++ width ++ " " ++ height
 
-            --, Mouse.onDown ( \event -> (DragMsg (DragState.MouseDown {x=round event.offsetPos.x, y=round event.offsetPos.y})) )
-            , Mouse.onMove (eventHelper DragState.MouseMove)
-            , Mouse.onDown (eventHelper DragState.MouseDown)
-            , Mouse.onUp (eventHelper DragState.MouseUp)
+                --, Mouse.onDown ( \event -> (DragMsg (DragState.MouseDown {x=round event.offsetPos.x, y=round event.offsetPos.y})) )
+                , Mouse.onMove (eventHelper DragState.MouseMove)
+                , Mouse.onDown (eventHelper DragState.MouseDown)
+                , Mouse.onUp (eventHelper DragState.MouseUp)
 
-            --, Touch.onStart (eventHelper DragState.MouseDown)
-            --, Touch.onEnd (eventHelper DragState.MouseUp)
-            ]
-            (List.concat
-                [ boardViz
-                , piecesViz
-                , anchorViz
+                --, Touch.onStart (eventHelper DragState.MouseDown)
+                --, Touch.onEnd (eventHelper DragState.MouseUp)
                 ]
-            )
-        , Html.div []
-            [ Html.button [ Html.Events.onClick EndTurn ] [ Html.text "End Turn" ]
-            , Html.button [ Html.Events.onClick Undo ] [ Html.text "Undo" ]
+                (List.concat
+                    [ boardViz
+                    , piecesViz
+                    , anchorViz
+                    ]
+                )
+            , Html.div []
+                [ Html.button [ Html.Events.onClick EndTurn ] [ Html.text "End Turn" ]
+                , Html.button [ Html.Events.onClick Undo ] [ Html.text "Undo" ]
+                ]
+            , Html.div []
+                [ Html.button [ Html.Events.onClick RequestTakeBack ] [ Html.text "Request Takeback" ]
+                , Html.button [ Html.Events.onClick OfferDraw ] [ Html.text "Offer Draw" ]
+                , Html.button [ Html.Events.onClick Resign ] [ Html.text "Resign" ]
+                ]
+            , requestView
             ]
-        , Html.div []
-            [ Html.button [ Html.Events.onClick RequestTakeBack ] [ Html.text "Request Takeback" ]
-            , Html.button [ Html.Events.onClick OfferDraw ] [ Html.text "Offer Draw" ]
-            , Html.button [ Html.Events.onClick Resign ] [ Html.text "Resign" ]
-            ]
-        , requestView
         ]
 
 
