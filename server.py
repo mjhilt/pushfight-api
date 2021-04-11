@@ -430,13 +430,14 @@ def post_update():
                 game['request'] = 'draw_offered_white'
             if 'draw_offered_black' in body.json:
                 game['request'] = 'draw_offered_black'
-
             if 'accept_takeback' in body.json:
                 if len(game['turns']) > 1:
                     game['turns'] = game['turns'][:-1]
                     game['gameStage'] = game['turns'][-1]['gameStage']
                     game['turns'][-1]['moves'] = []
                 game['request'] = "no_request"
+            if 'clear_request' in body.json:
+                game['request'] = 'no_request'
 
             if 'resign' in body.json:
                 if color == 'white':

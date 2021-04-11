@@ -136,11 +136,19 @@ update msg model =
                                 --( SendOfferDraw, Just cred ) ->
                                 --    Api.update "draw_offered" model.gameId cred GameFromServer
 
-                                ( SendAcceptDraw, Just cred ) ->
-                                    Api.update "accept_draw" model.gameId cred GameFromServer
+                                ( SendAcceptRequest, Just cred ) ->
+                                    case game.request of
+                                        Request.NoRequest ->
+                                            Cmd.none
+                                        Request.DrawOffered _ ->
+                                            Api.update "accept_draw" model.gameId cred GameFromServer
+                                        Request.TakebackRequested _ ->
+                                            Api.update "accept_takeback" model.gameId cred GameFromServer
+                                ( SendClearRequest, Just cred ) ->
+                                    Api.update "clear_request" model.gameId cred GameFromServer
 
-                                ( SendAcceptTakeback, Just cred ) ->
-                                    Api.update "accept_takeback" model.gameId cred GameFromServer
+                                --( SendAcceptTakeback, Just cred ) ->
+                                --    Api.update "accept_takeback" model.gameId cred GameFromServer
 
                                 ( SendResign, Just cred ) ->
                                     Api.update "resign" model.gameId cred GameFromServer

@@ -70,8 +70,16 @@ type Msg
     | Undo
     | RequestTakeBack
     | OfferDraw
-    | AcceptTakeback
-    | AcceptDraw
+    --| AcceptTakeback
+    --| RejectTakeback
+    --| WithdrawTakeback
+    --| AcceptDraw
+    --| RejectTakeback
+    --| WithdrawTakeback
+    | AcceptRequest
+    | ClearRequest
+    --| RejectRequest
+    --| WithdrawRequest
     | Resign
 
 
@@ -82,8 +90,9 @@ type OutMsg
     --| SendRequestTakeback
     --| SendOfferDraw
     | SendRequest Request
-    | SendAcceptDraw
-    | SendAcceptTakeback
+    | SendAcceptRequest
+    | SendClearRequest
+    --| SendAcceptTakeback
     | SendResign
 
 
@@ -385,11 +394,12 @@ update msg model =
         OfferDraw ->
             ( model, SendRequest (DrawOffered model.color))
 
-        AcceptDraw ->
-            ( { model | gameStage = Draw }, SendAcceptDraw )
-
-        AcceptTakeback ->
-            ( model, SendAcceptTakeback )
+        AcceptRequest ->
+            ( model, SendAcceptRequest )
+        ClearRequest ->
+            ( model, SendClearRequest )
+        --AcceptTakeback ->
+            --( model, SendAcceptRequest )
 
         Resign ->
             --let
@@ -516,15 +526,21 @@ view model =
                     noView
                 TakebackRequested c ->
                     if c /= model.color then
-                        Html.div [] [ Html.button [ Html.Events.onClick AcceptTakeback ] [ Html.text "Accept Takeback" ] ]
+                        Html.div []
+                            [ Html.button [ Html.Events.onClick AcceptRequest ] [ Html.text "Accept Takeback" ]
+                            , Html.button [ Html.Events.onClick ClearRequest ] [ Html.text "Reject Takeback" ]
+                            ]
                     else
-                        noView
+                        Html.button [ Html.Events.onClick ClearRequest ] [ Html.text "Withdraw Takeback" ]
 
                 DrawOffered c ->
                     if c /= model.color then
-                        Html.div [] [ Html.button [ Html.Events.onClick AcceptDraw ] [ Html.text "Accept Draw" ] ]
+                        Html.div []
+                            [ Html.button [ Html.Events.onClick AcceptRequest ] [ Html.text "Accept Draw" ]
+                            , Html.button [ Html.Events.onClick ClearRequest ] [ Html.text "Reject Draw" ]
+                            ]
                     else
-                        noView
+                        Html.button [ Html.Events.onClick ClearRequest ] [ Html.text "Withdraw Draw" ]
     in
     Html.div []
         [ Html.div [] [Html.text title]
