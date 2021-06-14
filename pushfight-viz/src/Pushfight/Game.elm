@@ -470,7 +470,7 @@ view model =
 
         boardViz =
             drawBoard model.gridSize rmapXY
-
+        railViz = drawRails model.gridSize model.orientation
         width =
             String.fromInt (4 * model.gridSize)
 
@@ -560,6 +560,7 @@ view model =
                 ]
                 (List.concat
                     [ boardViz
+                    , railViz
                     , piecesViz
                     , anchorViz
                     ]
@@ -603,6 +604,9 @@ drawPiece size rmapXY isWhite isPusher ix =
 
 boardColor =
     "#BD632F"
+
+railColor =
+    "#760900"
 
 
 pieceColorWhite =
@@ -687,6 +691,7 @@ drawBoard size rotateXY =
     List.map2 (drawBoardSquare size) xrs yrs
 
 
+
 drawPusher : Int -> Int -> Int -> String -> String -> List (Svg Msg)
 drawPusher size x y color accentColor =
     let
@@ -695,18 +700,18 @@ drawPusher size x y color accentColor =
     in
     [ Svg.rect
         [ Svg.Attributes.fill accentColor
-        , Svg.Attributes.x <| String.fromInt <| round (posx + fsize * 0.02)
-        , Svg.Attributes.y <| String.fromInt <| round (posy + fsize * 0.02)
-        , Svg.Attributes.width <| String.fromInt <| round (fsize * 0.96)
-        , Svg.Attributes.height <| String.fromInt <| round (fsize * 0.96)
-        ]
-        []
-    , Svg.rect
-        [ Svg.Attributes.fill color
         , Svg.Attributes.x <| String.fromInt <| round (posx + fsize * 0.05)
         , Svg.Attributes.y <| String.fromInt <| round (posy + fsize * 0.05)
         , Svg.Attributes.width <| String.fromInt <| round (fsize * 0.9)
         , Svg.Attributes.height <| String.fromInt <| round (fsize * 0.9)
+        ]
+        []
+    , Svg.rect
+        [ Svg.Attributes.fill color
+        , Svg.Attributes.x <| String.fromInt <| round (posx + fsize * 0.075)
+        , Svg.Attributes.y <| String.fromInt <| round (posy + fsize * 0.075)
+        , Svg.Attributes.width <| String.fromInt <| round (fsize * 0.85)
+        , Svg.Attributes.height <| String.fromInt <| round (fsize * 0.85)
         ]
         []
     ]
@@ -722,14 +727,14 @@ drawMover size x y color accentColor =
         [ Svg.Attributes.fill accentColor
         , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
         , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
-        , Svg.Attributes.r <| String.fromInt <| round (fsize / 2.0)
+        , Svg.Attributes.r <| String.fromInt <| round (fsize / 2.2)
         ]
         []
     , Svg.circle
         [ Svg.Attributes.fill color
         , Svg.Attributes.cx <| String.fromInt <| round (posx + (fsize / 2.0))
         , Svg.Attributes.cy <| String.fromInt <| round (posy + (fsize / 2.0))
-        , Svg.Attributes.r <| String.fromInt <| round ((fsize * 0.95) / 2.0)
+        , Svg.Attributes.r <| String.fromInt <| round ((fsize * 0.88) / 2.0)
 
         --, Mouse.onDown ( \e -> DragState.MouseDown {x=x*size + size//2, y=y*size + size//2} |> DragMsg)
         ]
@@ -754,6 +759,43 @@ drawAnchor size x y =
 
 
 
--- TODO
---drawRails : Int -> Orientation -> List (Svg Msg)
---drawRails size orientation =
+drawRails : Int -> Orientation.Orientation -> List (Svg Msg)
+drawRails size orientation =
+    let
+            railWidth = round (0.1*(toFloat size))
+    in
+        case orientation of
+            Orientation.Ninety ->
+                [ Svg.rect
+                    [ Svg.Attributes.fill railColor
+                    , Svg.Attributes.x <| String.fromInt <| (0)
+                    , Svg.Attributes.y <| String.fromInt <| (2*size)
+                    , Svg.Attributes.width <| String.fromInt <| railWidth
+                    , Svg.Attributes.height <| String.fromInt <| (5*size)
+                    ] []
+                , Svg.rect
+                    [ Svg.Attributes.fill railColor
+                    , Svg.Attributes.x <| String.fromInt <| (4*size - railWidth)
+                    , Svg.Attributes.y <| String.fromInt <| (3*size)
+                    , Svg.Attributes.width <| String.fromInt <| railWidth
+                    , Svg.Attributes.height <| String.fromInt <| (5*size)
+                    ] []
+                ]
+            Orientation.TwoSeventy ->
+                [ Svg.rect
+                    [ Svg.Attributes.fill railColor
+                    , Svg.Attributes.x <| String.fromInt <| (0)
+                    , Svg.Attributes.y <| String.fromInt <| (2*size)
+                    , Svg.Attributes.width <| String.fromInt <| railWidth
+                    , Svg.Attributes.height <| String.fromInt <| (5*size)
+                    ] []
+                , Svg.rect
+                    [ Svg.Attributes.fill railColor
+                    , Svg.Attributes.x <| String.fromInt <| (4*size - railWidth)
+                    , Svg.Attributes.y <| String.fromInt <| (3*size)
+                    , Svg.Attributes.width <| String.fromInt <| railWidth
+                    , Svg.Attributes.height <| String.fromInt <| (5*size)
+                    ] []
+                ]
+            _ ->
+                []
